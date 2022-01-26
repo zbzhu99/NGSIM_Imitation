@@ -46,7 +46,7 @@ pip install -r requirements.txt
 
 ### Setup PPUU
 
-8. Download the PPUU simulator from: 
+8. Download the PPUU simulator from: https://drive.google.com/file/d/1oMzxTWK-wzpFufi2SryyD2Pa_l1tTEW0/view?usp=sharing, and place it under `pytorch-PPUU/`
 
 9. Generate structured expert demonstrations with
 
