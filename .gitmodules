@@ -1,0 +1,3 @@
+[submodule "SMARTS"]
+	path = SMARTS
+	url = https://github.com/huawei-noah/SMARTS.git

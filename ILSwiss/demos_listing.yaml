@@ -1,0 +1,95 @@
+smarts_interaction_dataset:
+  decription: "Interaction Dataset Merging, SMARTS"
+  file_paths: [
+    ./demos/interaction_dataset/smarts_interaction_dataset_stack-1.pkl
+  ]
+  eval_split: [
+    ./demos/interaction_dataset/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/interaction_dataset/train_ids.pkl
+  ]
+
+smarts_interaction_dataset_stack_5:
+  decription: "Interaction Dataset Merging, SMARTS"
+  file_paths: [
+    ./demos/interaction_dataset/smarts_interaction_dataset_stack-5.pkl
+  ]
+  eval_split: [
+    ./demos/interaction_dataset/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/interaction_dataset/train_ids.pkl
+  ]
+
+smarts_ngsim:
+  description: "NGSIM, SMARTS"
+  file_paths: [
+    ./demos/ngsim/smarts_ngsim.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ngsim/train_ids.pkl
+  ]
+
+masmarts_ngsim:
+  description: "NGSIM, MA-SMARTS"
+  file_paths: [
+    ./demos/ngsim/smarts_ngsim.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim/multiagent_test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ngsim/multiagent_train_ids.pkl
+  ]
+
+smarts_ngsim_stack_2:
+  description: "NGSIM, SMARTS"
+  file_paths: [
+    ./demos/ngsim/smarts_ngsim_stack-2.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ngsim/train_ids.pkl
+  ]
+
+smarts_ngsim_stack_3:
+  description: "NGSIM, SMARTS"
+  file_paths: [
+    ./demos/ngsim/smarts_ngsim_stack-3.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ngsim/train_ids.pkl
+  ]
+
+lane_smarts_ngsim:
+  description: "NGSIM, SMARTS, LANE-OBS"
+  file_paths: [
+    ./demos/ngsim/smarts_ngsim_stack-1_LANE.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ngsim/train_ids.pkl
+  ]
+
+ppuu_i80:
+  description: "PPUU, NGSIM, I80"
+  file_paths: [
+    ./demos/ppuu/ppuu_i80_stack-1.pkl
+  ]
+  eval_split: [
+    ./demos/ppuu/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ppuu/train_ids.pkl
+  ]
