@@ -362,9 +362,9 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
                     self._n_env_steps_total
                 )
                 # OPTIMIZE(zbzhu): can stack all data with same agent_id together and compute once
-                actions_n[idx][agent_id] = self.exploration_policy_n[policy_id].get_action(
-                    observation_n[agent_id]
-                )
+                actions_n[idx][agent_id] = self.exploration_policy_n[
+                    policy_id
+                ].get_action(observation_n[agent_id])
         return actions_n
 
     def _start_epoch(self, epoch):
