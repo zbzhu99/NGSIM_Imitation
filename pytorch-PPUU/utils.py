@@ -419,7 +419,7 @@ def grad_norm(net):
         if p.grad is None:
             pdb.set_trace()
         param_norm = p.grad.data.norm(2)
-        total_norm += param_norm ** 2
+        total_norm += param_norm**2
     total_norm = total_norm ** (1.0 / 2)
     return total_norm
 

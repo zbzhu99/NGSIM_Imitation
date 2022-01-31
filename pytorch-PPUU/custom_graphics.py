@@ -23,7 +23,7 @@ class Point:
         return Point((self.x / scalar, self.y / scalar))
 
     def norm(self):
-        return math.sqrt(self.x ** 2 + self.y ** 2)
+        return math.sqrt(self.x**2 + self.y**2)
 
     # get back values in original tuple format
     def get(self):

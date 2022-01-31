@@ -84,7 +84,7 @@ class Car:
         lane = random.choice(tuple(free_lanes))
         if lane == 6 and type(self).__name__ == "PatchedCar":
             self._position = np.array((0, lanes[-1]["max"] + 42), np.float)
-            self._direction = np.array((1, -0.035), np.float) / np.sqrt(1 + 0.035 ** 2)
+            self._direction = np.array((1, -0.035), np.float) / np.sqrt(1 + 0.035**2)
         else:
             self._position = np.array((-self._length, lanes[lane]["mid"]), np.float)
             self._direction = np.array((1, 0), np.float)
@@ -645,7 +645,9 @@ class Car:
                 observation,
                 reward,
                 self.off_screen or done,
-                dict(v=str(self), a=self.arrived_to_dst, c=self.collisions_per_frame > 0),
+                dict(
+                    v=str(self), a=self.arrived_to_dst, c=self.collisions_per_frame > 0
+                ),
             )
 
         return observation, cost, self.off_screen or done, self
