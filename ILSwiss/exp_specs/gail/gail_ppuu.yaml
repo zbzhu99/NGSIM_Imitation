@@ -17,7 +17,7 @@ constants:
   expert_name: 'ppuu_i80'
   expert_idx: 0
   traj_num: -1
-  scale_env_with_demo_stats: false
+  scale_env_with_demo_stats: false  # already scaled inside PPUU
 
   disc_num_blocks: 2
   disc_hid_dim: 128
@@ -39,13 +39,11 @@ constants:
     min_steps_before_training: 5000
 
     eval_deterministic: true
-    num_steps_per_eval: 20000
-    
-    replay_buffer_size: 2000000
+
+    replay_buffer_size: 1000000
     expert_buffer_size: 1000000
     no_terminal: false
     eval_no_terminal: false
-    wrap_absorbing: false
 
     num_update_loops_per_train_call: 100
     num_disc_updates_per_loop_iter: 1
@@ -54,7 +52,6 @@ constants:
     disc_lr: 0.0003
     disc_momentum: 0.9
     use_grad_pen: true
-    # grad_pen_weight: 10.0
     disc_optim_batch_size: 256
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
@@ -68,7 +65,6 @@ constants:
 
   sac_params:
     alpha: 0.2
-    # reward_scale: 8.0
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25
@@ -95,8 +91,8 @@ constants:
       auto_reset: True
       seed: 24491
     eval_env_specs:
-      env_num: 30
-      wait_num: 30
+      env_num: 10
+      wait_num: 10
       auto_reset: True
       seed: 24492
 

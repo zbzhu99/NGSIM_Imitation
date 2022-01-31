@@ -23,12 +23,20 @@ pip install -r requirements.txt
 
 3. Install SMARTS simulation platform in the `./SMARTS` folder following its instructions
 
+   ```bash
+   cd ./SMARTS
+   bash ./utils/setup/install_deps.sh
+   echo "export SUMO_HOME=/usr/share/sumo" >> ~/.bashrc
+   pip install -e .[camera-obs]
+   ```
+
 4. Download the NGSIM I-80 dataset from: https://drive.google.com/file/d/14j5S8lGir9J5QAl8AHMamDu3WTDQAQc3/view?usp=sharing, and place it under `smarts-imitation/ngsim`
 
 5. Install the ngsim wrapper for smarts with
 
    ```bash
-   pip install -e smarts_imitation
+   pip install -e ./smarts-imitation
+   scl scenario build --clean ./smarts-imitation/ngsim  # You may encounter the ModuleNotFoundError when running this command, which is okay. Please just wait until it terminates.
    ```
 
 6. Generate structured expert demonstrations with
@@ -46,7 +54,7 @@ pip install -r requirements.txt
 
 ### Setup PPUU
 
-8. Download the PPUU simulator from: https://drive.google.com/file/d/1oMzxTWK-wzpFufi2SryyD2Pa_l1tTEW0/view?usp=sharing, and place it under `pytorch-PPUU/`
+8. Download data file for the PPUU simulator from: https://drive.google.com/file/d/1oMzxTWK-wzpFufi2SryyD2Pa_l1tTEW0/view?usp=sharing, and place it under `pytorch-PPUU/`
 
 9. Generate structured expert demonstrations with
 

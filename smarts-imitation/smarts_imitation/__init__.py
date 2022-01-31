@@ -14,13 +14,13 @@ register(
         scenarios=[
             os.path.join(
                 os.path.dirname(os.path.dirname(__file__)),
-                "interaction_dataset_merging",
+                "ngsim",
             )
         ],
         action_range=np.array(
             [
-                [-2, -0.1],
-                [2, 0.1],
+                [-8.0, -2.5],
+                [8.0, 2.5],
             ]
         ),
     ),

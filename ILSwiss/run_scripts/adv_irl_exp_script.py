@@ -164,7 +164,7 @@ def experiment(variant):
             ]
         )
         obs_mean, obs_std = np.mean(obs, axis=0), np.std(obs, axis=0)
-        print("mean:{} std:{}".format(obs_mean, obs_std))
+        print("mean:{}\nstd:{}".format(obs_mean, obs_std))
 
         _env_wrapper = env_wrapper
         env_wrapper = lambda *args, **kwargs: ObsScaledEnv(

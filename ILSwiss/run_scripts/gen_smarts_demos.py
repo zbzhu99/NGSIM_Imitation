@@ -124,7 +124,7 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size):
     smarts.reset(next(scenarios_iterator))
     smarts.step({})
     smarts.attach_sensors_to_vehicles(
-        agent_spec, smarts.vehicle_index.social_vehicle_ids()
+        agent_spec.interface, smarts.vehicle_index.social_vehicle_ids()
     )
     raw_observations, _, _, dones = smarts.observe_from(
         smarts.vehicle_index.social_vehicle_ids()
@@ -145,7 +145,7 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size):
             break
 
         smarts.attach_sensors_to_vehicles(
-            agent_spec, smarts.vehicle_index.social_vehicle_ids()
+            agent_spec.interface, smarts.vehicle_index.social_vehicle_ids()
         )
         raw_next_observations, _, _, dones = smarts.observe_from(
             smarts.vehicle_index.social_vehicle_ids()

@@ -140,7 +140,7 @@ xorg.sh
 .nfs*
 assets/
 *.pkl
-original/
+original
 *.shf
 *.pth
 jidi_submission/
