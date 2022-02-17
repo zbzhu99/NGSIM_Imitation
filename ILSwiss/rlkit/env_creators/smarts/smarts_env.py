@@ -9,7 +9,6 @@ class SmartsEnv(BaseEnv):
         super().__init__(**configs)
 
         # create underlying smarts simulator
-        scenario_name = configs["scenario_name"]
         env_kwargs = configs["env_kwargs"]
         self._env = gym.make(
             "SMARTS-Imitation-v0", vehicle_ids=vehicle_ids, **env_kwargs

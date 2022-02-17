@@ -64,7 +64,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 0.2
+    alpha: 1.0
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25
@@ -91,8 +91,8 @@ constants:
       auto_reset: True
       seed: 24491
     eval_env_specs:
-      env_num: 10
-      wait_num: 10
+      env_num: 30
+      wait_num: 30
       auto_reset: True
       seed: 24492
 

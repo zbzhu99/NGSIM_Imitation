@@ -2,7 +2,7 @@ meta_data:
   script_path: run_scripts/adv_irl_exp_script.py
   exp_name: gail_smarts_ngsim
   description: Train an adversarial IRL model
-  num_workers: 2 # 64
+  num_workers: 1 # 64
   using_gpus: true
 # -----------------------------------------------------------------------------
 variables:

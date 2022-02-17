@@ -1,0 +1,43 @@
+meta_data:
+  script_path: run_scripts/evaluate_policy.py
+  exp_name: test_policy_eval
+  description: Evaluate a policy
+  num_workers: 1 # 64
+  using_gpus: true
+# -----------------------------------------------------------------------------
+variables:
+  seed: [0]
+
+# -----------------------------------------------------------------------------
+constants:
+  scale_env_with_demo_stats: false
+
+  log_path: ""  # path to your log dir
+
+  eval_deterministic: true
+
+  num_eval_steps: 2000  # not used in ngsim eval
+  max_path_length: 1000
+
+  no_terminal: false
+  render: true
+  render_kwargs: {}
+
+  save_samples: false  # true
+
+  env_specs:
+    env_creator: "ppuu"
+    scenario_name: "i80"
+    env_kwargs:
+      fps: 30
+      nb_states: 1
+      display: False
+      delta_t: 0.1
+      store: False
+      show_frame_count: False
+      data_dir: 'ppuu_logs/'
+    eval_env_specs:
+      env_num: 30
+      wait_num: 30
+      auto_reset: True
+      seed: 24492
