@@ -5,7 +5,7 @@ from smarts.core.controllers import ActionSpaceType
 from smarts_imitation.utils import adapter
 
 
-def get_agent_spec(mode="GAIL"):
+def get_agent_spec(mode="LANE"):
 
     agent_spec = AgentSpec(
         interface=AgentInterface(

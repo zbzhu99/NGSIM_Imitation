@@ -2,22 +2,17 @@ from smarts_imitation.utils import common
 import gym
 
 
-def get_observation_adapter(mode="GAIL"):
+def get_observation_adapter(mode="LANE"):
     # look_ahead = 10
     closest_neighbor_num = 6
     img_resolution = 40
     observe_lane_num = 3
     if mode == "GAIL":
         subscribed_features = dict(
-            # distance_to_center=(stack_size, 1),
             ego_pos=(2,),
             heading=(1,),
             speed=(1,),
             neighbor=(closest_neighbor_num * 4,),  # dist, speed, ttc
-            # heading_errors=(stack_size, look_ahead),
-            # steering=(stack_size, 1),
-            # ego_lane_dist_and_speed=(stack_size, observe_lane_num + 1),
-            # img_gray=(stack_size, img_resolution, img_resolution) if use_rgb else False,
         )
     elif mode == "MADPO":
         subscribed_features = dict(
@@ -43,7 +38,6 @@ def get_observation_adapter(mode="GAIL"):
 
     observation_adapter = common.get_observation_adapter(
         observation_space,
-        # look_ahead=look_ahead,
         observe_lane_num=observe_lane_num,
         resize=(img_resolution, img_resolution),
         closest_neighbor_num=closest_neighbor_num,
