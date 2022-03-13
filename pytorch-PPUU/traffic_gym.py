@@ -7,7 +7,8 @@ import numpy as np
 import sys
 import pickle
 
-import PIL
+# import PIL
+import PIL.Image
 from custom_graphics import draw_dashed_line, draw_text, draw_rect
 from gym import core, spaces
 import os
@@ -30,9 +31,11 @@ colours = {
     "r": (255, 000, 000),
     "g": (000, 255, 000),
     "m": (255, 000, 255),
-    "b": (000, 000, 255),
+    "b": (000, 255, 255),
     "c": (000, 255, 255),
     "y": (255, 255, 000),
+    "grey": (100, 100, 100),
+    "o": (255, 69, 0),
 }
 
 # Car coordinate system, origin under the centre of the rear axis
@@ -646,7 +649,11 @@ class Car:
                 reward,
                 self.off_screen or done,
                 dict(
-                    v=str(self), a=self.arrived_to_dst, c=self.collisions_per_frame > 0
+                    v=str(self),
+                    a=self.arrived_to_dst,
+                    c=self.collisions_per_frame > 0,
+                    o=self.off_screen,
+                    id=self.id,
                 ),
             )
 
@@ -812,11 +819,13 @@ class Simulator(core.Env):
         self.store_sim_video = store_simulator_video
 
         self.vehicle_ids = vehicle_ids
-        if vehicle_ids is not None:
-            self.random.shuffle(self.vehicle_ids)
 
     def seed(self, seed=None):
         self.random.seed(seed)
+        if self.vehicle_ids is not None:
+            _idxes = list(range(len(self.vehicle_ids)))
+            self.random.shuffle(_idxes)
+            self.vehicle_ids = self.vehicle_ids[_idxes]
 
     def build_lanes(self, nb_lanes):
         return tuple(
@@ -983,6 +992,38 @@ class Simulator(core.Env):
         ahead = target_lane[my_idx] if my_idx < len(target_lane) else None
 
         return behind, ahead
+
+    def get_render_image(self, mode="machine"):
+        screen_size = np.array(self.screen_size)
+        vehicle_surface = pygame.Surface(screen_size)
+
+        # try:
+        #     lane_surface = self._lane_surfaces[mode]
+
+        # except KeyError:
+        # lane_surface = pygame.Surface(self.screen_size)
+        # lane_surface.fill((0, 0, 0))
+
+        vehicle_surface.fill(colours["grey"])
+        self._draw_lanes(vehicle_surface, mode=mode)
+
+        ego_center_x = None
+        for i, v in enumerate(self.vehicles):
+            if v.is_controlled and v.valid:
+                # Draw all the other vehicles (in green)
+                for vv in set(self.vehicles) - {v}:
+                    vv.draw(vehicle_surface, mode=mode)
+                # Superimpose the lanes
+                # vehicle_surface.blit(
+                #     lane_surface, (0, 0), special_flags=pygame.BLEND_MAX
+                # )
+                # vehicle_surface.blit(lane_surface, (0, 0))
+                # HACK(zbzhu): return ego center to crop ego-centered images
+                ego_center_x = v.draw(vehicle_surface, mode="ego-car")
+
+        image = pygame.surfarray.array3d(vehicle_surface).transpose(1, 0, 2)
+        image[:, :, [0, 1, 2]] = image[:, :, [2, 1, 0]]
+        return image, ego_center_x
 
     def render(self, mode="human", width_height=None, scale=1.0):
         if mode == "human" and self.display:

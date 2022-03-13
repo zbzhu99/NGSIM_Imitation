@@ -1,7 +1,7 @@
 meta_data:
-  script_path: run_scripts/evaluate_policy.py
-  exp_name: policy_eval
-  description: Evaluate a policy
+  script_path: run_scripts/save_ppuu_video.py
+  exp_name: vis_policy_ppuu
+  description: Save policy rollout videos in PPUU simulator
   num_workers: 1 # 64
   using_gpus: true
 # -----------------------------------------------------------------------------
@@ -14,19 +14,14 @@ constants:
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: false
+  fps: 24
 
-  log_path: ""  # path to your log dir
+  # log_path: ""  # path to your log dir
+  log_path: "/NAS2020/Workspaces/DRLGroup/zbzhu/MADPO/NGSIM_Imitation/ILSwiss/logs/gail-ppuu--terminal--gp-4.0--rs-2.0--trajnum--1/gail_ppuu--terminal--gp-4.0--rs-2.0--trajnum--1_2022_02_17_16_33_14_0000--s-0"
 
   eval_deterministic: true
 
-  num_eval_steps: 2000  # not used in ngsim eval
   max_path_length: 1000
-
-  no_terminal: false
-  render: true
-  render_kwargs: {}
-
-  save_samples: false  # true
 
   env_specs:
     env_creator: "ppuu"
@@ -39,8 +34,3 @@ constants:
       store: False
       show_frame_count: False
       data_dir: 'ppuu_logs/'
-    eval_env_specs:
-      env_num: 30
-      wait_num: 30
-      auto_reset: True
-      seed: 24492

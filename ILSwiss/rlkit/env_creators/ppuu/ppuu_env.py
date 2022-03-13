@@ -51,6 +51,7 @@ class PPUUEnv(BaseEnv):
         info = {}
         info["collision"] = _info["c"]
         info["reached_goal"] = _info["a"]
+        info["car_id"] = _info["id"]
 
         next_obs_n = {self._default_agent_name: next_obs}
         rew_n = {self._default_agent_name: rew}

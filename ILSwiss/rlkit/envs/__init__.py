@@ -11,7 +11,7 @@ __all__ = [
 ]
 
 
-def get_env(env_specs):
+def get_env(env_specs, vehicle_ids=None):
     """
     env_specs:
         env_name: 'mujoco'
@@ -23,7 +23,7 @@ def get_env(env_specs):
     except KeyError:
         print("Unknown env name: {}".format(env_specs["env_creator"]))
 
-    env = env_class(**env_specs)
+    env = env_class(vehicle_ids=vehicle_ids, **env_specs)
 
     return env
 
