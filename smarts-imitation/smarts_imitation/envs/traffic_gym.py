@@ -94,6 +94,12 @@ class SMARTSImitation(gym.Env):
 
         info = {}
         info["reached_goal"] = raw_observations[self.vehicle_id].events.reached_goal
+
+        # HACK(zbzhu): Be aligned with PPUU.
+        if raw_observations[self.vehicle_id].ego_vehicle_state.position[0] > 210.0:
+            info["reached_goal"] = True
+            dones[self.vehicle_id] = True
+
         info["collision"] = len(raw_observations[self.vehicle_id].events.collisions) > 0
         if self.mode == "MADPO":
             full_obs, info["neighbor_dict"] = self._convert_obs(raw_observations)

@@ -12,6 +12,7 @@ constants:
 
   seed: 0
   test_ratio: 0.15
+  mode: "LANE"
 
   env_specs:
     env_creator: "smarts"

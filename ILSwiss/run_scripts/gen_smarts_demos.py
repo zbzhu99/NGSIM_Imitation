@@ -96,9 +96,9 @@ def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
     return actions
 
 
-def sample_demos(train_vehicle_ids, scenarios, obs_stack_size):
+def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, mode="LANE"):
     agent_spec = agent.get_agent_spec()
-    observation_adapter = adapter.get_observation_adapter()
+    observation_adapter = adapter.get_observation_adapter(mode=mode)
 
     smarts = SMARTS(
         agent_interfaces={},
@@ -220,6 +220,7 @@ def experiment(specs):
         train_vehicle_ids,
         NGSIM_SCENARIO_PATH,
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
+        mode=specs["mode"],
     )
 
     print(
@@ -230,9 +231,10 @@ def experiment(specs):
 
     with open(
         Path(save_path).joinpath(
-            "smarts_{}_stack-{}.pkl".format(
+            "smarts_{}_stack-{}_{}.pkl".format(
                 exp_specs["env_specs"]["scenario_name"],
                 exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
+                exp_specs["mode"],
             ),
         ),
         "wb",

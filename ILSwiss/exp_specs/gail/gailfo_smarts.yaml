@@ -33,7 +33,7 @@ constants:
     state_only: true
 
     num_epochs: 162
-    num_steps_per_epoch: 100000
+    num_steps_per_epoch: 500000
     num_steps_between_train_calls: 1000
     max_path_length: 1500
     min_steps_before_training: 5000
@@ -77,7 +77,8 @@ constants:
   env_specs:
     env_creator: 'smarts'
     scenario_name: 'ngsim'
-    env_kwargs: {}
+    env_kwargs:
+      mode: "LANE"
     training_env_specs:
       env_num: 20
       wait_num: 10
