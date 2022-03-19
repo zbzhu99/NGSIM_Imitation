@@ -104,7 +104,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with open(args.experiment, "r") as spec_file:
         spec_string = spec_file.read()
-        exp_specs = yaml.load(spec_string)
+        exp_specs = yaml.load(spec_string, Loader=yaml.FullLoader)
 
     if exp_specs["num_gpu_per_worker"] > 0:
         print("\n\nUSING GPU\n\n")

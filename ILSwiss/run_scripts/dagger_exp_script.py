@@ -21,7 +21,7 @@ from rlkit.torch.algorithms.dagger.dagger import DAgger
 
 def experiment(variant):
     with open("demos_listing.yaml", "r") as f:
-        listings = yaml.load(f.read())
+        listings = yaml.load(f.read(), Loader=yaml.FullLoader)
 
     demos_path = listings[variant["expert_name"]]["file_paths"][variant["expert_idx"]]
     """
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with open(args.experiment, "r") as spec_file:
         spec_string = spec_file.read()
-        exp_specs = yaml.load(spec_string)
+        exp_specs = yaml.load(spec_string, Loader=yaml.FullLoader)
 
     # make all seeds the same.
     exp_specs["env_specs"]["eval_env_seed"] = exp_specs["env_specs"][
