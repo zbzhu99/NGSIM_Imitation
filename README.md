@@ -39,7 +39,9 @@ pip install -r requirements.txt
 
    ```bash
    pip install -e ./smarts-imitation
-   scl scenario build --clean ./smarts-imitation/ngsim  # You may encounter the ModuleNotFoundError when running this command, which is okay. Please just wait until it terminates.
+   # You may encounter the ModuleNotFoundError when running this command,
+   # which is okay. Please just wait until it terminates.
+   scl scenario build --clean ./smarts-imitation/ngsim
    ```
 
 6. Generate structured expert demonstrations with
