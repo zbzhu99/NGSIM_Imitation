@@ -12,10 +12,16 @@ def get_observation_adapter(neighbor_mode="LANE"):
         speed=(1,),
     )
 
-    if neighbor_mode == "RADIUS":  # Neighbor vehicles are selected by radius around the ego.
-        subscribed_features["neighbor_with_radius"] = (closest_neighbor_num * 4,)  # dist, speed, ttc
+    if (
+        neighbor_mode == "RADIUS"
+    ):  # Neighbor vehicles are selected by radius around the ego.
+        subscribed_features["neighbor_with_radius"] = (
+            closest_neighbor_num * 4,
+        )  # dist, speed, ttc
     elif neighbor_mode == "LANE":  # Neighbor vehicles are selected from adjacent lanes.
-        subscribed_features["neighbor_with_lanes"] = (closest_neighbor_num * 4,)  # dist, speed, ttc
+        subscribed_features["neighbor_with_lanes"] = (
+            closest_neighbor_num * 4,
+        )  # dist, speed, ttc
     else:
         raise NotImplementedError
 

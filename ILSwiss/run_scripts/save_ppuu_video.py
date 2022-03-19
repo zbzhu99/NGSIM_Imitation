@@ -44,9 +44,7 @@ def experiment(variant):
     env = get_env(env_specs, vehicle_ids=eval_vehicle_ids)
     env.seed(variant["seed"])
 
-    print(
-        "\nEnv: {}: {}".format(env_specs["env_creator"], env_specs["scenario_name"])
-    )
+    print("\nEnv: {}: {}".format(env_specs["env_creator"], env_specs["scenario_name"]))
     print("kwargs: {}".format(env_specs["env_kwargs"]))
     print("Obs Space: {}".format(env.observation_space_n))
     print("Act Space: {}\n".format(env.action_space_n))

@@ -12,7 +12,12 @@ from smarts_imitation.utils import agent
 
 class SMARTSImitation(gym.Env):
     def __init__(
-        self, scenarios, action_range, obs_stacked_size=1, vehicle_ids=None, neighbor_mode="LANE"
+        self,
+        scenarios,
+        action_range,
+        obs_stacked_size=1,
+        vehicle_ids=None,
+        neighbor_mode="LANE",
     ):
         super(SMARTSImitation, self).__init__()
         self.neighbor_mode = neighbor_mode

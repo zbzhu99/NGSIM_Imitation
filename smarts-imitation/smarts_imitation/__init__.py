@@ -12,7 +12,9 @@ class ScenarioZoo:
     @classmethod
     def get_scenario(cls, scenario_name):
         if scenario_name not in cls.scenarios:
-            raise ValueError(scenario_name, f"{scenario_name} is not in the scenario zoo.")
+            raise ValueError(
+                scenario_name, f"{scenario_name} is not in the scenario zoo."
+            )
         return cls.scenarios[scenario_name]
 
 

@@ -45,7 +45,9 @@ def experiment(variant):
     if variant["scale_env_with_demo_stats"]:
         with open("demos_listing.yaml", "r") as f:
             listings = yaml.load(f.read(), Loader=yaml.FullLoader)
-        demos_path = listings[variant["expert_name"]]["file_paths"][variant["expert_idx"]]
+        demos_path = listings[variant["expert_name"]]["file_paths"][
+            variant["expert_idx"]
+        ]
 
         print("demos_path", demos_path)
         with open(demos_path, "rb") as f:
@@ -176,9 +178,7 @@ if __name__ == "__main__":
         test_paths_all.extend(test_paths)
 
         if args.save_res:
-            save_path = os.path.join(
-                exp_specs["log_path"], "res.csv"
-            )
+            save_path = os.path.join(exp_specs["log_path"], "res.csv")
 
             if not os.path.exists(save_path):
                 with open(save_path, "w") as f:
