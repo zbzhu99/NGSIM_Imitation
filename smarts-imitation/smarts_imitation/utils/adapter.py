@@ -2,33 +2,20 @@ from smarts_imitation.utils import common
 import gym
 
 
-def get_observation_adapter(mode="LANE"):
-    # look_ahead = 10
+def get_observation_adapter(neighbor_mode="LANE"):
     closest_neighbor_num = 6
     img_resolution = 40
     observe_lane_num = 3
-    if mode == "GAIL":
-        subscribed_features = dict(
-            ego_pos=(2,),
-            heading=(1,),
-            speed=(1,),
-            neighbor=(closest_neighbor_num * 4,),  # dist, speed, ttc
-        )
-    elif mode == "MADPO":
-        subscribed_features = dict(
-            ego_pos=(2,),
-            heading=(1,),
-            speed=(1,),
-            neighbor=(closest_neighbor_num * 4,),  # dist, speed, ttc
-            neighbor_dict=(closest_neighbor_num,),
-        )
-    elif mode == "LANE":
-        subscribed_features = dict(
-            ego_pos=(2,),
-            heading=(1,),
-            speed=(1,),
-            neighbor_with_lanes=(closest_neighbor_num * 4,),  # dist, speed, ttc
-        )
+    subscribed_features = dict(
+        ego_pos=(2,),
+        heading=(1,),
+        speed=(1,),
+    )
+
+    if neighbor_mode == "RADIUS":  # Neighbor vehicles are selected by radius around the ego.
+        subscribed_features["neighbor_with_radius"] = (closest_neighbor_num * 4,)  # dist, speed, ttc
+    elif neighbor_mode == "LANE":  # Neighbor vehicles are selected from adjacent lanes.
+        subscribed_features["neighbor_with_lanes"] = (closest_neighbor_num * 4,)  # dist, speed, ttc
     else:
         raise NotImplementedError
 
@@ -44,15 +31,6 @@ def get_observation_adapter(mode="LANE"):
     )
 
     return observation_adapter
-
-
-# def get_action_adapter():
-#     def action_adapter(model_action):
-#         assert len(model_action) == 2
-#         throttle = np.clip(model_action[0], 0, 1)
-#         brake = np.abs(np.clip(model_action[0], -1, 0))
-#         return np.asarray([throttle, brake, model_action[1]])
-#     return action_adapter
 
 
 def get_action_adapter():

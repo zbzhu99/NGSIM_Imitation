@@ -155,7 +155,7 @@ class CalObs:
         return np.asarray([ego.steering / 45.0])
 
     @staticmethod
-    def cal_neighbor(env_obs: Observation, **kwargs):
+    def cal_neighbor_with_radius(env_obs: Observation, **kwargs):
         ego = env_obs.ego_vehicle_state
         neighbor_vehicle_states = env_obs.neighborhood_vehicle_states
         closest_neighbor_num = kwargs.get("closest_neighbor_num", 8)

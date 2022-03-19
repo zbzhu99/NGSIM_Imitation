@@ -21,7 +21,7 @@ from smarts.core.smarts import SMARTS
 from smarts.core.scenario import Scenario
 from smarts.core.utils.math import radians_to_vec
 from smarts_imitation.utils import adapter, agent
-from smarts_imitation import NGSIM_SCENARIO_PATH
+from smarts_imitation import ScenarioZoo
 
 
 def split_train_test(scenarios, test_ratio):
@@ -96,9 +96,9 @@ def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
     return actions
 
 
-def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, mode="LANE"):
+def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode="LANE"):
     agent_spec = agent.get_agent_spec()
-    observation_adapter = adapter.get_observation_adapter(mode=mode)
+    observation_adapter = adapter.get_observation_adapter(neighbor_mode=neighbor_mode)
 
     smarts = SMARTS(
         agent_interfaces={},
@@ -199,7 +199,7 @@ def experiment(specs):
             )
         )
         train_vehicle_ids, test_vehicle_ids = split_train_test(
-            NGSIM_SCENARIO_PATH,
+            ScenarioZoo.get_scenario("NGSIM-I80"),
             specs["test_ratio"],
         )
 
@@ -218,9 +218,9 @@ def experiment(specs):
     # obtain demo paths
     demo_trajs = sample_demos(
         train_vehicle_ids,
-        NGSIM_SCENARIO_PATH,
+        ScenarioZoo.get_scenario("NGSIM-I80"),
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-        mode=specs["mode"],
+        neighbor_mode=specs["neighbor_mode"],
     )
 
     print(
@@ -234,7 +234,7 @@ def experiment(specs):
             "smarts_{}_stack-{}_{}.pkl".format(
                 exp_specs["env_specs"]["scenario_name"],
                 exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-                exp_specs["mode"],
+                exp_specs["neighbor_mode"],
             ),
         ),
         "wb",

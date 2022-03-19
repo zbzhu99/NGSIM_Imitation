@@ -75,10 +75,10 @@ constants:
     policy_std_reg_weight: 0.001
 
   env_specs:
-    env_creator: 'smarts'
-    scenario_name: 'ngsim'
+    env_creator: "smarts"
+    scenario_name: "NGSIM-I80"
     env_kwargs:
-      mode: "LANE"
+      neighbor_mode: "LANE"
     training_env_specs:
       env_num: 20
       wait_num: 10

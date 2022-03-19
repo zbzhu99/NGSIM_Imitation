@@ -12,10 +12,10 @@ constants:
 
   seed: 0
   test_ratio: 0.15
-  mode: "LANE"
+  neighbor_mode: "LANE"
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "ngsim"
+    scenario_name: "NGSIM-I80"
     env_kwargs:
       obs_stack_size: 1

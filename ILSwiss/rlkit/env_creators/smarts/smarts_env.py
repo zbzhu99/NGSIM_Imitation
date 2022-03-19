@@ -1,5 +1,4 @@
-import gym
-import smarts_imitation
+from smarts_imitation import create_env
 
 from rlkit.env_creators.base_env import BaseEnv
 
@@ -10,9 +9,8 @@ class SmartsEnv(BaseEnv):
 
         # create underlying smarts simulator
         env_kwargs = configs["env_kwargs"]
-        self._env = gym.make(
-            "SMARTS-Imitation-v0", vehicle_ids=vehicle_ids, **env_kwargs
-        )
+        scenario_name = configs["scenario_name"]
+        self._env = create_env(scenario_name, **env_kwargs)
 
         self._default_agent_name = "agent_0"
         self.agent_ids = [self._default_agent_name]

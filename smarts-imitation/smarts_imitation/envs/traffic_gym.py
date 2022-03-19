@@ -12,10 +12,10 @@ from smarts_imitation.utils import agent
 
 class SMARTSImitation(gym.Env):
     def __init__(
-        self, scenarios, action_range, obs_stacked_size=1, vehicle_ids=None, mode="GAIL"
+        self, scenarios, action_range, obs_stacked_size=1, vehicle_ids=None, neighbor_mode="LANE"
     ):
         super(SMARTSImitation, self).__init__()
-        self.mode = mode
+        self.neighbor_mode = neighbor_mode
         self.scenarios_iterator = Scenario.scenario_variations(scenarios, [])
         self._next_scenario()
         self.obs_stacked_size = obs_stacked_size
@@ -57,7 +57,6 @@ class SMARTSImitation(gym.Env):
         )
         ego_state = []
         other_info = []
-        neighbor_dict = observation.pop("neighbor_dict", None)
         for feat in observation:
             if feat in ["ego_pos", "speed", "heading"]:
                 ego_state.append(observation[feat])
@@ -66,10 +65,7 @@ class SMARTSImitation(gym.Env):
         ego_state = np.concatenate(ego_state, axis=-1).reshape(-1)
         other_info = np.concatenate(other_info, axis=-1).reshape(-1)
         full_obs = np.concatenate((ego_state, other_info))
-        if neighbor_dict is None:
-            return full_obs
-        else:
-            return full_obs, neighbor_dict
+        return full_obs
 
     def step(self, action):
         action = np.clip(action, -1, 1)
@@ -94,17 +90,8 @@ class SMARTSImitation(gym.Env):
 
         info = {}
         info["reached_goal"] = raw_observations[self.vehicle_id].events.reached_goal
-
-        # HACK(zbzhu): Be aligned with PPUU.
-        if raw_observations[self.vehicle_id].ego_vehicle_state.position[0] > 210.0:
-            info["reached_goal"] = True
-            dones[self.vehicle_id] = True
-
         info["collision"] = len(raw_observations[self.vehicle_id].events.collisions) > 0
-        if self.mode == "MADPO":
-            full_obs, info["neighbor_dict"] = self._convert_obs(raw_observations)
-        else:
-            full_obs = self._convert_obs(raw_observations)
+        full_obs = self._convert_obs(raw_observations)
 
         return (
             full_obs,
