@@ -72,9 +72,7 @@ def experiment(variant):
     )
 
     for i in range(len(traj_list)):
-        expert_replay_buffer.add_path(
-            traj_list[i], env=env
-        )
+        expert_replay_buffer.add_path(traj_list[i], env=env)
 
     env_wrapper = ProxyEnv  # Identical wrapper
     kwargs = {}
