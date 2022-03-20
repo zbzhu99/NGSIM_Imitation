@@ -11,6 +11,7 @@ class ProxyEnv(Serializable, Env):
     def __init__(self, wrapped_env):
         self._wrapped_env = wrapped_env
         Serializable.quick_init(self, locals())
+        super().__init__()
         self.action_space_n = self._wrapped_env.action_space_n
         self.observation_space_n = self._wrapped_env.observation_space_n
 

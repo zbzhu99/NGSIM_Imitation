@@ -31,6 +31,7 @@ class I80Car(Car):
     def __init__(
         self, df, y_offset, look_ahead, screen_w, font=None, kernel=0, dt=1 / 10
     ):
+        super().__init__(override=True)
         k = kernel  # running window size
         self._length = df.at[df.index[0], "Vehicle Length"] * FOOT * SCALE
         self._width = df.at[df.index[0], "Vehicle Width"] * FOOT * SCALE

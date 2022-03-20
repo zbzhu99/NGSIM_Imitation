@@ -138,7 +138,7 @@ class MAAdvIRL(TorchBaseAlgorithm):
             save_itrs=True,
         ):
             self._start_epoch(epoch)
-            for steps_this_epoch in tqdm(
+            for _ in tqdm(
                 range(self.num_env_steps_per_epoch // self.training_env_wait_num),
                 unit_scale=self.training_env_wait_num,
             ):

@@ -31,12 +31,8 @@ def experiment(variant):
         eval_vehicle_ids = pickle.load(f)
 
     eval_vehicle_ids = np.array(eval_vehicle_ids)
-    """ Can specify vehicle ids to be visualized here. """
-    # eval_vehicle_ids = np.array(
-    #     [
-    #         [0, 788],
-    #     ]
-    # )
+    # Can specify vehicle ids to be visualized as follows.
+    # eval_vehicle_ids = np.array([[0, 788],])
     variant["num_vehicles"] = len(eval_vehicle_ids)
     print("Total Vehicle Size: ", len(eval_vehicle_ids))
 

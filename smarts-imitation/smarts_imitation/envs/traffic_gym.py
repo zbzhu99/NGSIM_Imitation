@@ -24,7 +24,7 @@ class SMARTSImitation(gym.Env):
         self.scenarios_iterator = Scenario.scenario_variations(scenarios, [])
         self._next_scenario()
         self.obs_stacked_size = obs_stacked_size
-        self.agent_spec = agent.get_agent_spec(mode)
+        self.agent_spec = agent.get_agent_spec(neighbor_mode)
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,

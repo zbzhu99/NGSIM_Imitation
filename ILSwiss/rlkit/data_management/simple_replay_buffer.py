@@ -57,7 +57,6 @@ class AgentSimpleReplayBuffer(AgentReplayBuffer):
         # self._terminals[i] = a terminal was received at time i
         self._terminals = np.zeros((max_replay_buffer_size, 1), dtype="uint8")
         self._timeouts = np.zeros((max_replay_buffer_size, 1), dtype="uint8")
-        # absorbing[0] is if obs was absorbing, absorbing[1] is if next_obs was absorbing
         self._absorbing = np.zeros((max_replay_buffer_size, 2))
         self._top = 0
         self._size = 0
@@ -112,8 +111,6 @@ class AgentSimpleReplayBuffer(AgentReplayBuffer):
         # self._terminals[i] = a terminal was received at time i
         self._terminals = np.zeros((self._max_replay_buffer_size, 1), dtype="uint8")
         self._timeouts = np.zeros((self._max_replay_buffer_size, 1), dtype="uint8")
-        # absorbing[0] is if obs was absorbing, absorbing[1] is if next_obs was absorbing
-        self._absorbing = np.zeros((self._max_replay_buffer_size, 2))
         self._top = 0
         self._size = 0
         self._trajs = 0
@@ -137,8 +134,6 @@ class AgentSimpleReplayBuffer(AgentReplayBuffer):
         self._rewards[self._top] = reward
         self._terminals[self._top] = terminal
         self._timeouts[self._top] = timeout
-        if "absorbing" in kwargs:
-            self._absorbing[self._top] = kwargs["absorbing"]
 
         if terminal:
             next_start = (self._top + 1) % self._max_replay_buffer_size
@@ -257,7 +252,6 @@ class AgentSimpleReplayBuffer(AgentReplayBuffer):
                     "rewards",
                     "terminals",
                     "next_observations",
-                    "absorbing",
                 ]
             )
         if isinstance(self._observations, dict):
@@ -283,8 +277,6 @@ class AgentSimpleReplayBuffer(AgentReplayBuffer):
             ret_dict["terminals"] = self._terminals[indices]
         if "next_observations" in keys:
             ret_dict["next_observations"] = next_obs_to_return
-        if "absorbing" in keys:
-            ret_dict["absorbing"] = self._absorbing[indices]
 
         if multi_step:
             next_next_obs_return = [None] * step_num

@@ -15,6 +15,7 @@ class GaussianStrategy(RawExplorationStrategy, Serializable):
     ):
         assert len(action_space.shape) == 1
         Serializable.quick_init(self, locals())
+        super().__init__()
         self._max_sigma = max_sigma
         if min_sigma is None:
             min_sigma = max_sigma

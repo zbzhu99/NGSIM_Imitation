@@ -1,6 +1,7 @@
 import bisect
 
 import pygame
+from pygame import surface
 import torch
 import random
 import numpy as np
@@ -75,12 +76,16 @@ class Car:
         look_ahead,
         screen_w,
         font,
+        override=False,
     ):
         """
         Initialise a sedan on a random lane
         :param lanes: tuple of lanes, with ``min`` and ``max`` y coordinates
         :param dt: temporal updating interval
         """
+        if override:
+            return
+
         self._length = round(4.8 * self.SCALE)
         self._width = round(1.8 * self.SCALE)
         self.id = car_id
@@ -995,13 +1000,13 @@ class Simulator(core.Env):
 
     def get_render_image(self, mode="machine"):
         screen_size = np.array(self.screen_size)
-        vehicle_surface = pygame.Surface(screen_size)
+        vehicle_surface = surface.Surface(screen_size)
 
         # try:
         #     lane_surface = self._lane_surfaces[mode]
 
         # except KeyError:
-        # lane_surface = pygame.Surface(self.screen_size)
+        # lane_surface = surface.Surface(self.screen_size)
         # lane_surface.fill((0, 0, 0))
 
         vehicle_surface.fill(colours["grey"])
@@ -1088,14 +1093,14 @@ class Simulator(core.Env):
         if mode == "machine":
             max_extension = int(np.linalg.norm(width_height) / 2)
             machine_screen_size = np.array(self.screen_size) + 2 * max_extension
-            vehicle_surface = pygame.Surface(machine_screen_size)
+            vehicle_surface = surface.Surface(machine_screen_size)
 
             # draw lanes
             try:
                 lane_surface = self._lane_surfaces[mode]
 
             except KeyError:
-                lane_surface = pygame.Surface(machine_screen_size)
+                lane_surface = surface.Surface(machine_screen_size)
                 self._draw_lanes(lane_surface, mode=mode, offset=max_extension)
 
             # # draw vehicles
@@ -1105,7 +1110,7 @@ class Simulator(core.Env):
             # vehicle_surface.blit(lane_surface, (0, 0), special_flags=pygame.BLEND_MAX)
 
             # extract states
-            ego_surface = pygame.Surface(machine_screen_size)
+            ego_surface = surface.Surface(machine_screen_size)
             for i, v in enumerate(self.vehicles):
                 if (self.store or v.is_controlled) and v.valid:
                     # For every vehicle we want to extract the state, start with a black surface

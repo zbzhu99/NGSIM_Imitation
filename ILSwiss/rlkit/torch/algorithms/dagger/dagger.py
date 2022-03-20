@@ -54,7 +54,6 @@ class DAgger(BC):
         reward,
         next_observation,
         terminal,
-        absorbing,
         agent_info,
         env_info,
     ):
@@ -70,7 +69,6 @@ class DAgger(BC):
             reward,
             next_observation,
             terminal,
-            absorbing,
             agent_info,
             env_info,
         )

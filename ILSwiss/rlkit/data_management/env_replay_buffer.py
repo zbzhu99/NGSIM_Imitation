@@ -31,9 +31,9 @@ class PolicyReplayBuffer:
     def clear(self):
         self.policy_buffer.clear()
 
-    def add_path(self, path_n, absorbing=False, env=None):
+    def add_path(self, path_n, env=None):
         for a_id in path_n.keys():
-            self.policy_buffer.add_path(path_n[a_id], absorbing=absorbing, env=env)
+            self.policy_buffer.add_path(path_n[a_id], env=env)
 
     def add_sample(
         self,
