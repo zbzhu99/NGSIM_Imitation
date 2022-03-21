@@ -17,7 +17,9 @@ def get_agent_spec(neighbor_mode="LANE"):
             lidar=False,
             action=ActionSpaceType.Imitation,
         ),
-        observation_adapter=adapter.get_observation_adapter(neighbor_mode=neighbor_mode),
+        observation_adapter=adapter.get_observation_adapter(
+            neighbor_mode=neighbor_mode
+        ),
         action_adapter=adapter.get_action_adapter(),
     )
 

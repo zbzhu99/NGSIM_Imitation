@@ -79,7 +79,9 @@ class SMARTSImitation:
         )
 
         if obs_stacked_size > 1:
-            self.obs_queue_n = {a_id: deque(maxlen=obs_stacked_size) for a_id in self.agent_ids}
+            self.obs_queue_n = {
+                a_id: deque(maxlen=obs_stacked_size) for a_id in self.agent_ids
+            }
 
     def seed(self, seed):
         np.random.seed(seed)
@@ -146,7 +148,9 @@ class SMARTSImitation:
         )
 
     def reset(self):
-        if not self.control_all_vehicles and self.vehicle_itr + self.n_agents >= (len(self.vehicle_ids) - 1):
+        if not self.control_all_vehicles and self.vehicle_itr + self.n_agents >= (
+            len(self.vehicle_ids) - 1
+        ):
             if self.control_vehicle_num == 1:
                 self.vehicle_itr = 0
             else:
@@ -159,7 +163,9 @@ class SMARTSImitation:
         self.active_vehicle_ids = self.vehicle_ids[
             self.vehicle_itr : self.vehicle_itr + self.n_agents
         ]
-        self.aid_to_vid = {f"agent_{i}": self.active_vehicle_ids[i] for i in range(self.n_agents)}
+        self.aid_to_vid = {
+            f"agent_{i}": self.active_vehicle_ids[i] for i in range(self.n_agents)
+        }
 
         agent_interfaces = {}
         # Find the earliest start time among all selected vehicles.
@@ -190,7 +196,8 @@ class SMARTSImitation:
                     [full_obs_n[agent_id] for _ in range(self.obs_stacked_size)]
                 )
                 full_obs_n[agent_id] = np.concatenate(
-                    [obs for obs in list(self.obs_queue_n[agent_id])], axis=-1,
+                    [obs for obs in list(self.obs_queue_n[agent_id])],
+                    axis=-1,
                 )
 
         self.done_n = {a_id: False for a_id in self.agent_ids}
@@ -208,7 +215,9 @@ class SMARTSImitation:
             self.vehicle_itr = 0
         else:
             # Sort vehicle id by starting time, so that we can get adjacent vehicles easily.
-            vehicle_start_times = [self.vehicle_missions[v_id].start_time for v_id in self.vehicle_ids]
+            vehicle_start_times = [
+                self.vehicle_missions[v_id].start_time for v_id in self.vehicle_ids
+            ]
             self.vehicle_ids = self.vehicle_ids[np.argsort(vehicle_start_times)]
             self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
             # self.vehicle_itr = 0
