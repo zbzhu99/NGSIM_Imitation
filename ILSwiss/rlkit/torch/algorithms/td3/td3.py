@@ -192,7 +192,6 @@ class TD3(Trainer):
             target_qf1=self.target_qf1,
             target_qf2=self.target_qf2,
         )
-        return snapshot
 
     @property
     def networks(self):

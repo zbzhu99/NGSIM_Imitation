@@ -11,7 +11,7 @@ print(sys.path)
 
 import gym
 from rlkit.envs import get_env, get_envs
-from rlkit.envs.wrappers import NormalizedBoxActEnv, ProxyEnv
+from rlkit.envs.wrappers import ProxyEnv
 
 import rlkit.torch.utils.pytorch_util as ptu
 from rlkit.launchers.launcher_util import setup_logger, set_seed

@@ -1,13 +1,8 @@
 import numpy as np
-from collections import OrderedDict
-from gym import utils
 from gym import spaces
 import os
 
-# from rlkit.envs.mujoco_env import MujocoEnv
-from gym.envs.mujoco.mujoco_env import MujocoEnv
-
-from rlkit.core.vistools import plot_seaborn_heatmap, plot_scatter
+from rlkit.core.vistools import plot_scatter
 
 
 class VanillaPointMassEnv:

@@ -14,11 +14,7 @@ import dateutil.tz
 import csv
 import joblib
 import json
-import pickle
-import base64
 import errno
-
-import pickle
 
 from rlkit.core.tabulate import tabulate
 from torch.utils.tensorboard import SummaryWriter
@@ -238,8 +234,6 @@ class TerminalTablePrinter(object):
         self.refresh()
 
     def refresh(self):
-        import os
-
         rows, columns = os.popen("stty size", "r").read().split()
         tabulars = self.tabulars[-(int(rows) - 3) :]
         sys.stdout.write("\x1b[2J\x1b[H")

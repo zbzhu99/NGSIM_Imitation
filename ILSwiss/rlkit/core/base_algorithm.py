@@ -514,22 +514,6 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         Probably will be overridden by each algorithm
         """
         raise NotImplementedError
-        data_to_save = dict(
-            epoch=epoch,
-            exploration_policy=self.exploration_policy,
-        )
-        if self.save_environment:
-            data_to_save["env"] = self.training_env
-        return data_to_save
-
-    # @abc.abstractmethod
-    # def load_snapshot(self, snapshot):
-    #     """
-    #     Should be implemented on a per algorithm basis
-    #     taking into consideration the particular
-    #     get_epoch_snapshot implementation for the algorithm
-    #     """
-    #     pass
 
     def get_extra_data_to_save(self, epoch):
         """

@@ -2,18 +2,12 @@ from collections import OrderedDict
 
 import numpy as np
 import torch.optim as optim
-from torch import nn as nn
 import torch
-from torch.autograd import Variable
 import torch.nn.functional as F
 
 import rlkit.torch.utils.normalizerpytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
-from rlkit.torch.algorithms.torch_rl_algorithm import (
-    TorchRLAlgorithm,
-    MetaTorchRLAlgorithm,
-    NPMetaTorchRLAlgorithm,
-)
+from rlkit.torch.algorithms.torch_rl_algorithm import MetaTorchRLAlgorithm
 from rlkit.torch.algorithms.sac.policies import MakeDeterministic
 
 
@@ -92,7 +86,6 @@ class MetaSoftQLearning(MetaTorchRLAlgorithm):
         rewards = batch["rewards"]
         terminals = batch["terminals"]
         obs = batch["observations"]
-        actions = batch["actions"]
         next_obs = batch["next_observations"]
 
         """

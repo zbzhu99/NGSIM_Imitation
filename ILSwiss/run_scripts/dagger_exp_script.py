@@ -45,7 +45,6 @@ def experiment(variant):
     traj_list = random.sample(traj_list, variant["traj_num"])
 
     obs = np.vstack([traj_list[i]["observations"] for i in range(len(traj_list))])
-    acts = np.vstack([traj_list[i]["actions"] for i in range(len(traj_list))])
     obs_mean, obs_std = np.mean(obs, axis=0), np.std(obs, axis=0)
     # acts_mean, acts_std = np.mean(acts, axis=0), np.std(acts, axis=0)
     acts_mean, acts_std = None, None
@@ -72,7 +71,7 @@ def experiment(variant):
     )
 
     for i in range(len(traj_list)):
-        expert_replay_buffer.add_path(traj_list[i], env=env)
+        expert_replay_buffer.add_path(traj_list[i])
 
     env_wrapper = ProxyEnv  # Identical wrapper
     kwargs = {}

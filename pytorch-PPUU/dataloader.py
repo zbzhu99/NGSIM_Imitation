@@ -1,5 +1,10 @@
-import sys
-import numpy, random, pdb, math, pickle, glob, time, os, re
+import numpy
+import random
+import math
+import pickle
+import glob
+import os
+import re
 import torch
 
 
@@ -51,8 +56,8 @@ class DataLoader:
                     print(f"[loading {f}]")
                     fd = pickle.load(open(f, "rb"))
                     Ta = fd["actions"].size(0)
-                    Tp = fd["pixel_proximity_cost"].size(0)
-                    Tl = fd["lane_cost"].size(0)
+                    # Tp = fd["pixel_proximity_cost"].size(0)
+                    # Tl = fd["lane_cost"].size(0)
                     # assert Ta == Tp == Tl  # TODO Check why there are more costs than actions
                     # if not(Ta == Tp == Tl): pdb.set_trace()
                     images.append(fd["images"])
@@ -99,7 +104,7 @@ class DataLoader:
             rgn = numpy.random.RandomState(0)
             perm = rgn.permutation(self.n_episodes)
             n_train = int(math.floor(self.n_episodes * 0.90))
-            n_valid = int(math.floor(self.n_episodes * 0.10))
+            # n_valid = int(math.floor(self.n_episodes * 0.10))
             self.train_indx = perm[0:n_train]
             # self.valid_indx = perm[n_train : n_train + n_valid]
             self.valid_indx = None

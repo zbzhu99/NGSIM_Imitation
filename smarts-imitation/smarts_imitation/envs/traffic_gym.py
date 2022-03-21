@@ -96,8 +96,6 @@ class SMARTSImitation(gym.Env):
         info = {}
         info["reached_goal"] = raw_observations[self.vehicle_id].events.reached_goal
         info["collision"] = len(raw_observations[self.vehicle_id].events.collisions) > 0
-        full_obs = self._convert_obs(raw_observations)
-
         return (
             full_obs,
             rewards[self.vehicle_id],

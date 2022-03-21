@@ -462,11 +462,3 @@ def concat_nested_dicts(d1, d2):
         else concat_nested_dicts(d1[k], d2[k])
         for k in d1
     }
-
-
-class AgentLRUMetaSimpleReplayBuffer:
-    def __init__(self, *args, max_tasks=-1, **kwargs):
-        super().__init__(*args, **kwargs)
-        raise NotImplementedError()
-
-        assert max_tasks > 0

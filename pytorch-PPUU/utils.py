@@ -9,6 +9,7 @@ import re
 import sys
 from datetime import datetime
 from os import path
+from numbers import Number
 
 import matplotlib.pyplot as plt
 import scipy
@@ -52,7 +53,7 @@ def read_images(dirname, pytorch=True):
 
 def lane_cost(images, car_size):
     SCALE = 0.25
-    safe_factor = 1.5
+    # safe_factor = 1.5
     bsize, npred, nchannels, crop_h, crop_w = images.size()
     images = images.view(bsize * npred, nchannels, crop_h, crop_w)
 
@@ -80,7 +81,7 @@ def lane_cost(images, car_size):
         .view(bsize * npred)
         .cuda()
     )
-    min_x = max_x
+    # min_x = max_x
     min_y = torch.ceil(crop_w / 2 - width)  # assumes other._width / 2 = self._width / 2
     min_y = (
         min_y.view(bsize, 1)
@@ -236,8 +237,8 @@ def plot_mean_and_CI(mean, lb, ub, color_mean=None, color_shading=None):
 
 
 def mean_confidence_interval(data, confidence=0.95):
-    n = data.shape[0]
-    m, se = numpy.mean(data, 0), scipy.stats.sem(data, 0)
+    # n = data.shape[0]
+    m, _ = numpy.mean(data, 0), scipy.stats.sem(data, 0)
     h = numpy.std(data, 0)
     #    h = se * scipy.stats.t._ppf((1+confidence)/2., n-1)
     return m, m - h, m + h
@@ -438,9 +439,9 @@ def log_pdf(z, mu, sigma):
 
 
 def log_gaussian_distribution(y, mu, sigma):
-    Z = 1.0 / (
-        (2.0 * numpy.pi) ** (mu.size(2) / 2)
-    )  # normalization factor for Gaussians (!!can be numerically unstable)
+    # Z = 1.0 / (
+    #     (2.0 * numpy.pi) ** (mu.size(2) / 2)
+    # )  # normalization factor for Gaussians (!!can be numerically unstable)
     result = (y.unsqueeze(1).expand_as(mu) - mu) * torch.reciprocal(sigma)
     result = 0.5 * torch.sum(result * result, 2)
     result += torch.log(2 * math.pi * torch.prod(sigma, 2))
@@ -622,14 +623,14 @@ def parse_command_line(parser=None):
     parser.add_argument("-infer_z", action="store_true")
     parser.add_argument("-gamma", type=float, default=0.99)
     parser.add_argument("-learned_cost", action="store_true")
-    m1 = (
-        "model=fwd-cnn-vae-fp-layers=3-bsize=64-ncond=20-npred=20-lrt=0.0001-nfeature=256-dropout=0.1-nz=32-"
-        + "beta=1e-06-zdropout=0.5-gclip=5.0-warmstart=1-seed=1.step200000.model"
-    )
-    m2 = (
-        "model=fwd-cnn-layers=3-bsize=64-ncond=20-npred=20-lrt=0.0001-nfeature=256-dropout=0.1-gclip=5.0-"
-        + "warmstart=0-seed=1.step200000.model"
-    )
+    # m1 = (
+    #     "model=fwd-cnn-vae-fp-layers=3-bsize=64-ncond=20-npred=20-lrt=0.0001-nfeature=256-dropout=0.1-nz=32-"
+    #     + "beta=1e-06-zdropout=0.5-gclip=5.0-warmstart=1-seed=1.step200000.model"
+    # )
+    # m2 = (
+    #     "model=fwd-cnn-layers=3-bsize=64-ncond=20-npred=20-lrt=0.0001-nfeature=256-dropout=0.1-gclip=5.0-"
+    #     + "warmstart=0-seed=1.step200000.model"
+    # )
     m3 = (
         "model=fwd-cnn-vae-fp-layers=3-bsize=64-ncond=20-npred=20-lrt=0.0001-nfeature=256-dropout=0.1-nz=32-"
         + "beta=1e-06-zdropout=0.5-gclip=5.0-warmstart=1-seed=1.step400000.model"
@@ -671,7 +672,7 @@ def parse_command_line(parser=None):
 
 def build_model_file_name(opt):
     if "vae" in opt.mfile:
-        opt.model_file += f"-model=vae"
+        opt.model_file += "-model=vae"
     if "zdropout=0.5" in opt.mfile:
         opt.model_file += "-zdropout=0.5"
     elif "zdropout=0.0" in opt.mfile:

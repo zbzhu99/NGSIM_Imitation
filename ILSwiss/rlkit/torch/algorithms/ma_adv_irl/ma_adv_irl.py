@@ -2,7 +2,6 @@ import numpy as np
 from collections import OrderedDict
 from typing import Dict, List
 import gtimer as gt
-import numpy as np
 from tqdm import tqdm
 
 import torch

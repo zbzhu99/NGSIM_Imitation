@@ -4,13 +4,10 @@ import os.path as osp
 import pickle
 import random
 import sys
-import time
-import uuid
 import inspect
 from collections import namedtuple
 from copy import deepcopy
 
-import __main__ as main
 import datetime
 import dateutil.tz
 import numpy as np

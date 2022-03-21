@@ -13,7 +13,6 @@ sys.path.append("/NAS2020/Workspaces/DRLGroup/zbzhu/lfo-ppuu/lfo")
 from dataloader import DataLoader
 from map_i80_ctrl import ControlledI80
 from tianshou.env import SubprocVectorEnv
-from rlkit.torch.sac.policies import ReparamTanhMultivariateGaussianLfOPolicy
 from rlkit.torch.sac.policies import MakeDeterministic
 from rlkit.data_management.split_dict import split_dict
 

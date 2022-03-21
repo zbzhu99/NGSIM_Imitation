@@ -256,7 +256,7 @@ def simple_separated_format(separator):
 
 def _isconvertible(conv, string):
     try:
-        n = conv(string)
+        _ = conv(string)
         return True
     except ValueError:
         return False

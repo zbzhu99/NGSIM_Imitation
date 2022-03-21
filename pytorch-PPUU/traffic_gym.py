@@ -67,63 +67,6 @@ class Car:
     SCALE = SCALE
     LANE_W = LANE_W
 
-    def __init__(
-        self,
-        lanes,
-        free_lanes,
-        dt,
-        car_id,
-        look_ahead,
-        screen_w,
-        font,
-        override=False,
-    ):
-        """
-        Initialise a sedan on a random lane
-        :param lanes: tuple of lanes, with ``min`` and ``max`` y coordinates
-        :param dt: temporal updating interval
-        """
-        if override:
-            return
-
-        self._length = round(4.8 * self.SCALE)
-        self._width = round(1.8 * self.SCALE)
-        self.id = car_id
-        lane = random.choice(tuple(free_lanes))
-        if lane == 6 and type(self).__name__ == "PatchedCar":
-            self._position = np.array((0, lanes[-1]["max"] + 42), np.float)
-            self._direction = np.array((1, -0.035), np.float) / np.sqrt(1 + 0.035**2)
-        else:
-            self._position = np.array((-self._length, lanes[lane]["mid"]), np.float)
-            self._direction = np.array((1, 0), np.float)
-        self._target_speed = (
-            max(0, (MAX_SPEED - random.randrange(0, 15) - 10 * lane))
-            * 1000
-            / 3600
-            * self.SCALE
-        )  # m / s
-        self._speed = self._target_speed
-        self._dt = dt
-        self._colour = colours["c"]
-        self._braked = False
-        self._passing = False
-        self._target_lane = self._position[1]
-        self._noisy_target_lane = self._target_lane
-        self.crashed = False
-        self._error = 0
-        self._states = list()
-        self._states_image = list()
-        self._ego_car_image = None
-        self._actions = list()
-        self._safe_factor = random.gauss(1.5, 0)  # 0.9 Germany, 2 safe
-        self.pid_k1 = np.random.normal(1e-4, 1e-5)
-        self.pid_k2 = np.random.normal(1e-3, 1e-4)
-        self.look_ahead = look_ahead
-        self.screen_w = screen_w
-        self._text = self.get_text(self.id, font)
-        self.is_controlled = False
-        self.collisions_per_frame = 0
-
     @staticmethod
     def get_text(n, font):
         text = font.render(str(n), True, colours["b"])

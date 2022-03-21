@@ -1,11 +1,9 @@
-import argparse, pdb
+import argparse
 import gym
 import numpy as np
 import os
-import pickle
 import random
 import torch
-import scipy.misc
 from gym.envs.registration import register
 
 parser = argparse.ArgumentParser()

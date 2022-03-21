@@ -1,7 +1,8 @@
 import yaml
 import argparse
-import numpy as np
-import os, inspect, sys
+import os
+import inspect
+import sys
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)

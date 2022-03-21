@@ -8,7 +8,6 @@ import inspect
 import pickle
 import random
 import gym
-from pathlib import Path
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)

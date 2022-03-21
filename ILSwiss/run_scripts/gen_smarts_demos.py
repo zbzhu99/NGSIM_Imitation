@@ -110,8 +110,6 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode="LA
     )
 
     prev_vehicles = set()
-    done_vehicles = set()
-
     path_builders = {}
     demo_trajs = []
 
