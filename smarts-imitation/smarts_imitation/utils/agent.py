@@ -5,7 +5,7 @@ from smarts.core.controllers import ActionSpaceType
 from smarts_imitation.utils import adapter
 
 
-def get_agent_spec(mode="LANE"):
+def get_agent_spec(neighbor_mode="LANE"):
 
     agent_spec = AgentSpec(
         interface=AgentInterface(
@@ -17,7 +17,7 @@ def get_agent_spec(mode="LANE"):
             lidar=False,
             action=ActionSpaceType.Imitation,
         ),
-        observation_adapter=adapter.get_observation_adapter(mode=mode),
+        observation_adapter=adapter.get_observation_adapter(neighbor_mode=neighbor_mode),
         action_adapter=adapter.get_action_adapter(),
     )
 

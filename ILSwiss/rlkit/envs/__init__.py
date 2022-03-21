@@ -1,5 +1,3 @@
-import abc
-
 from rlkit.env_creators import get_env_cls
 from rlkit.envs.wrappers import ProxyEnv
 from rlkit.envs.vecenvs import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv

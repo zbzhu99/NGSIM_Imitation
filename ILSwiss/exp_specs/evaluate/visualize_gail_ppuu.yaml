@@ -1,5 +1,5 @@
 meta_data:
-  script_path: run_scripts/save_ppuu_video.py
+  script_path: run_scripts/visualize_ppuu.py
   exp_name: vis_policy_ppuu
   description: Save policy rollout videos in PPUU simulator
   num_workers: 1 # 64

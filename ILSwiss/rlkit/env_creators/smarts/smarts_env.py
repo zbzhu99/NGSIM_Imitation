@@ -10,15 +10,23 @@ class SmartsEnv(BaseEnv):
         # create underlying smarts simulator
         env_kwargs = configs["env_kwargs"]
         scenario_name = configs["scenario_name"]
-        self._env = create_env(scenario_name, **env_kwargs)
+        self._env = create_env(scenario_name, vehicle_ids=vehicle_ids, **env_kwargs)
 
-        self._default_agent_name = "agent_0"
-        self.agent_ids = [self._default_agent_name]
-        self.n_agents = len(self.agent_ids)
-        self.observation_space_n = {
-            self._default_agent_name: self._env.observation_space
-        }
-        self.action_space_n = {self._default_agent_name: self._env.action_space}
+        self.n_agents = self._env.n_agents
+        self.agent_ids = self._env.agent_ids
+
+        self.observation_space_n = dict(
+            zip(
+                self.agent_ids,
+                [self._env.observation_space for _ in range(self._env.n_agents)],
+            )
+        )
+        self.action_space_n = dict(
+            zip(
+                self.agent_ids,
+                [self._env.action_space for _ in range(self._env.n_agents)],
+            )
+        )
 
     def __getattr__(self, attrname):
         if "_env" not in vars(self):
@@ -29,16 +37,10 @@ class SmartsEnv(BaseEnv):
         return self._env.seed(seed)
 
     def reset(self):
-        return {self._default_agent_name: self._env.reset()}
+        return self._env.reset()
 
     def step(self, action_n):
-        action = action_n[self._default_agent_name]
-        next_obs, rew, done, info = self._env.step(action)
-        next_obs_n = {self._default_agent_name: next_obs}
-        rew_n = {self._default_agent_name: rew}
-        done_n = {self._default_agent_name: done}
-        info_n = {self._default_agent_name: info}
-        return next_obs_n, rew_n, done_n, info_n
+        return self._env.step(action_n)
 
     def render(self, **kwargs):
         return self._env.render(**kwargs)

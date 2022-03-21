@@ -147,3 +147,5 @@ jidi_submission/
 ngsim_jidi/
 traffic_data/
 .DS_Store
+# envision replay files
+*.jsonl

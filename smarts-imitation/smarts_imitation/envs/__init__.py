@@ -1,2 +1,1 @@
-from smarts_imitation.envs.traffic_gym import SMARTSImitation
-from smarts_imitation.envs.multiagent_traffic_gym import MASMARTSImitation
+from smarts_imitation.envs.core import SMARTSImitation

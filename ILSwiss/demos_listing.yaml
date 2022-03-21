@@ -1,5 +1,5 @@
-smarts_ngsim:
-  description: "NGSIM, SMARTS"
+smarts_i80:
+  description: "SMARTS, NGSIM, I80"
   file_paths: [
     ./demos/ngsim/smarts_ngsim_stack-1_LANE.pkl
   ]

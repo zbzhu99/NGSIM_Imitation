@@ -14,7 +14,7 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_ngsim'
+  expert_name: 'smarts_i80'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true

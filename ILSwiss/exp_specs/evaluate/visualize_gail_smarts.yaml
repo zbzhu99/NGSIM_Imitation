@@ -1,0 +1,31 @@
+meta_data:
+  script_path: run_scripts/visualize_smarts.py
+  exp_name: vis_policy_smarts
+  description: Save policy rollout videos in SMARTS simulator
+  num_workers: 1 # 64
+  using_gpus: true
+# -----------------------------------------------------------------------------
+variables:
+  seed: [0]
+
+# -----------------------------------------------------------------------------
+constants:
+  expert_name: 'smarts_i80'
+  expert_idx: 0
+  traj_num: -1
+  scale_env_with_demo_stats: true
+
+  log_path: "logs/gail-smarts-ngsim--scale--terminal--gp-4.0--rs-2.0--trajnum--1/gail_smarts_ngsim--scale--terminal--gp-4.0--rs-2.0--trajnum--1_2022_03_18_09_27_17_0000--s-0"
+
+  eval_deterministic: true
+
+  max_path_length: 1000
+
+  env_specs:
+    env_creator: "smarts"
+    scenario_name: "NGSIM-I80"
+    env_kwargs:
+      control_all_vehicles: True
+      envision: True
+      envision_sim_name: "gail_i80"
+      envision_record_data_replay_path: "./envision_output"
