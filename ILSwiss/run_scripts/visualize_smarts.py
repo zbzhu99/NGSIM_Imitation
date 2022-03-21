@@ -137,7 +137,8 @@ if __name__ == "__main__":
         os.mkdir(exp_specs["video_path"])
 
     envision_proc = Popen(
-        f"scl envision start -s {ScenarioZoo.get_scenario('NGSIM-I80')} -p 8081", shell=True
+        f"scl envision start -s {ScenarioZoo.get_scenario('NGSIM-I80')} -p 8081",
+        shell=True,
     )
 
     seed = exp_specs["seed"]
