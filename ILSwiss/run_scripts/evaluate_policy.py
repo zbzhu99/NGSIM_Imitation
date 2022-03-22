@@ -18,7 +18,7 @@ from rlkit.envs import get_env, get_envs
 import rlkit.torch.utils.pytorch_util as ptu
 from rlkit.launchers.launcher_util import set_seed
 from rlkit.core import eval_util
-from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv, EPS
+from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv
 from rlkit.samplers import PathSampler
 from rlkit.torch.common.policies import MakeDeterministic
 
@@ -70,14 +70,6 @@ def experiment(variant):
             obs_mean=obs_mean,
             obs_std=obs_std,
         )
-        for i in range(len(traj_list)):
-            for k in traj_list[i].keys():
-                traj_list[i][k]["observations"] = (
-                    traj_list[i][k]["observations"] - obs_mean
-                ) / (obs_std + EPS)
-                traj_list[i][k]["next_observations"] = (
-                    traj_list[i][k]["next_observations"] - obs_mean
-                ) / (obs_std + EPS)
 
     env = env_wrapper(env)
 
@@ -165,35 +157,29 @@ if __name__ == "__main__":
     seed = exp_specs["seed"]
     set_seed(seed)
 
-    res_files = os.listdir(exp_specs["log_path"])
-    test_paths_all = []
-    for file_ in res_files:
-        if os.path.isfile(os.path.join(exp_specs["log_path"], file_)):
-            continue
-        exp_specs["policy_checkpoint"] = os.path.join(
-            exp_specs["log_path"], file_, "best.pkl"
-        )
-        statistics, test_paths = experiment(exp_specs)
-        test_paths_all.extend(test_paths)
+    exp_specs["policy_checkpoint"] = os.path.join(
+        exp_specs["log_path"], "best.pkl"
+    )
+    statistics, test_paths = experiment(exp_specs)
 
-        if args.save_res:
-            save_path = os.path.join(exp_specs["log_path"], "res.csv")
+    if args.save_res:
+        save_path = os.path.join(exp_specs["log_path"], "res.csv")
 
-            if not os.path.exists(save_path):
-                with open(save_path, "w") as f:
-                    f.write("success_rate,avg_distance,std_distance\n")
-            with open(save_path, "a") as f:
-                f.write(
-                    "{},{},{}\n".format(
-                        statistics["Test agent_0 Success Rate"],
-                        statistics["Test agent_0 Distance Mean"],
-                        statistics["Test agent_0 Distance Std"],
-                    )
+        if not os.path.exists(save_path):
+            with open(save_path, "w") as f:
+                f.write("success_rate,avg_distance,std_distance\n")
+        with open(save_path, "a") as f:
+            f.write(
+                "{},{},{}\n".format(
+                    statistics["Test agent_0 Success Rate"],
+                    statistics["Test agent_0 Distance Mean"],
+                    statistics["Test agent_0 Distance Std"],
                 )
+            )
 
-        if exp_specs["save_samples"]:
-            with open(
-                os.path.join(exp_specs["log_path"], "samples.pkl"),
-                "wb",
-            ) as f:
-                pickle.dump(test_paths_all, f)
+    if exp_specs["save_samples"]:
+        with open(
+            os.path.join(exp_specs["log_path"], "samples.pkl"),
+            "wb",
+        ) as f:
+            pickle.dump(test_paths, f)
