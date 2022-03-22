@@ -98,10 +98,14 @@ def experiment(variant):
     for _ in range(variant["num_vehicles"]):
         observation_n = env.reset()
         for step in range(variant["max_path_length"]):
-            action_n = {}
-            for agent_id, observation in observation_n.items():
-                action, _ = policy.get_action(obs_np=observation)
-                action_n[agent_id] = action
+            stacked_observations = np.stack(
+                [obs for obs in observation_n.values()], axis=0
+            )
+            stacked_actions = policy.get_actions(stacked_observations)
+            action_n = {
+                a_id: action
+                for a_id, action in zip(observation_n.keys(), stacked_actions)
+            }
 
             next_observation_n, reward_n, terminal_n, env_info_n = env.step(action_n)
 
@@ -139,6 +143,7 @@ if __name__ == "__main__":
     envision_proc = Popen(
         f"scl envision start -s {ScenarioZoo.get_scenario('NGSIM-I80')} -p 8081",
         shell=True,
+        preexec_fn=os.setsid,
     )
 
     seed = exp_specs["seed"]
@@ -146,8 +151,9 @@ if __name__ == "__main__":
     try:
         experiment(exp_specs)
     except Exception as e:
-        os.killpg(os.getpgid(envision_proc.pid), signal.SIGKILL)
+        os.killpg(os.getpgid(envision_proc.pid), signal.SIGTERM)
+        envision_proc.wait()
         raise e
 
-    os.killpg(os.getpgid(envision_proc.pid), signal.SIGKILL)
+    os.killpg(os.getpgid(envision_proc.pid), signal.SIGTERM)
     envision_proc.wait()
