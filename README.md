@@ -3,6 +3,7 @@
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/zbzhu99/NGSIM_Imitation.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/zbzhu99/NGSIM_Imitation/alerts/)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/zbzhu99/NGSIM_Imitation.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/zbzhu99/NGSIM_Imitation/context:python)
 [![Maintainability](https://api.codeclimate.com/v1/badges/a1f4c9260c5298bc8c40/maintainability)](https://codeclimate.com/github/zbzhu99/NGSIM_Imitation/maintainability)
+![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)
 ![MIT](https://img.shields.io/badge/license-MIT-blue)
 
 This repository contains three components: an improved version of ILSwiss, which is an RL training suite containing the implementation of Generative Adversarial Imitation Learning (GAIL), and two environments. The two environments both are driving simulators that use [NGSIM I-80]((https://www.fhwa.dot.gov/publications/research/operations/06137/)) dataset as background traffic. One of them is PPUU, the other is implemented as an imitation learning scenario based on [SMARTS](https://github.com/huawei-noah/SMARTS.git) platform.
