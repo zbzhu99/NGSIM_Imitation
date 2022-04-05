@@ -3,7 +3,6 @@ Replaced using new version of rlkit
 2e8097f2a2c4d4d5079f12b8210f8ac8f250aee0
 """
 import torch
-from torch import nn
 import numpy as np
 
 

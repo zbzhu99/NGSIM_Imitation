@@ -81,6 +81,9 @@ def experiment(variant):
         env_specs["eval_env_specs"]["env_num"],
     )
 
+    # Vehicles are splitted and assigned to different vector environments, and those from
+    # different envs will not be controlled together. Thus, evaluation result will vary with
+    # the number of evaluation envs when env.control_vehicle_num > 1.
     print(
         "\nCreating {} evaluation environments, each with {} vehicles ...\n".format(
             env_specs["eval_env_specs"]["env_num"], len(eval_vehicle_ids_list[0])
@@ -92,9 +95,10 @@ def experiment(variant):
         vehicle_ids_list=eval_vehicle_ids_list,
         **env_specs["eval_env_specs"],
     )
-    eval_car_num = np.array([len(v_ids) for v_ids in eval_vehicle_ids_list])
+    eval_car_num = np.array([len(v_ids) - env.control_vehicle_num + 1 for v_ids in eval_vehicle_ids_list])
 
     """ 2. Load Checkpoint Policies """
+    # all agents share the same policy
     policy_mapping_dict = dict(
         zip(env.agent_ids, ["policy_0" for _ in range(env.n_agents)])
     )

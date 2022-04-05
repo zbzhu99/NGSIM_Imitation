@@ -91,7 +91,9 @@ class PathSampler:
                 env_infos_n,
                 self._ready_env_ids,
             ):
-                for a_id in self.agent_ids:
+                for a_id in observation_n.keys():
+                    if a_id not in next_observation_n or a_id not in reward_n:
+                        continue
                     self.path_builders[env_id][a_id].add_all(
                         observations=observation_n[a_id],
                         actions=action_n[a_id],
@@ -141,9 +143,11 @@ class PathSampler:
             _observations = []
             _idxes = []
             for idx, observation_n in enumerate(observations_n):
-                if agent_id in observation_n:
+                if agent_id in observation_n.keys():
                     _observations.append(observation_n[agent_id])
                     _idxes.append(idx)
+            if len(_observations) == 0:
+                continue
             _actions = self.policy_n[policy_id].get_actions(
                 np.stack(_observations, axis=0)
             )
@@ -153,6 +157,7 @@ class PathSampler:
 
 
 class MultiagentPathSampler:
+    """ NOTE(zbzhu): Deprecated. Use PathSampler instead. """
     def __init__(
         self,
         env,

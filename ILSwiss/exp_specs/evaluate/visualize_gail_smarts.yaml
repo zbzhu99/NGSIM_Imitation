@@ -25,7 +25,8 @@ constants:
     env_creator: "smarts"
     scenario_name: "NGSIM-I80"
     env_kwargs:
-      control_all_vehicles: True
+      control_all_vehicles: False
+      control_vehicle_num: 10
       envision: True
       envision_sim_name: "gail_i80"
       envision_record_data_replay_path: "./envision_output"
