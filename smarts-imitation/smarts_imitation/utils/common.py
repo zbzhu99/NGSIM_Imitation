@@ -64,7 +64,7 @@ def _cal_angle(vec):
         base_angle = 0.0
         base_vec = np.array([1.0, 0.0])
 
-    cos = vec.dot(base_vec) / np.sqrt(vec.dot(vec) + base_vec.dot(base_vec))
+    cos = vec.dot(base_vec) / np.sqrt(vec.dot(vec) * base_vec.dot(base_vec))
     angle = math.acos(cos)
     return angle + base_angle
 
