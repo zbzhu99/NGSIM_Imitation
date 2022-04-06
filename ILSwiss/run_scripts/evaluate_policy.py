@@ -95,7 +95,9 @@ def experiment(variant):
         vehicle_ids_list=eval_vehicle_ids_list,
         **env_specs["eval_env_specs"],
     )
-    eval_car_num = np.array([len(v_ids) - env.control_vehicle_num + 1 for v_ids in eval_vehicle_ids_list])
+    eval_car_num = np.array(
+        [len(v_ids) - env.control_vehicle_num + 1 for v_ids in eval_vehicle_ids_list]
+    )
 
     """ 2. Load Checkpoint Policies """
     # all agents share the same policy
@@ -161,9 +163,7 @@ if __name__ == "__main__":
     seed = exp_specs["seed"]
     set_seed(seed)
 
-    exp_specs["policy_checkpoint"] = os.path.join(
-        exp_specs["log_path"], "best.pkl"
-    )
+    exp_specs["policy_checkpoint"] = os.path.join(exp_specs["log_path"], "best.pkl")
     statistics, test_paths = experiment(exp_specs)
 
     if args.save_res:

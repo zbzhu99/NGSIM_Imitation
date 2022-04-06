@@ -153,7 +153,7 @@ class SMARTSImitation:
         if self.episode_count == self.episode_num:
             self.episode_count = 0
             if self.control_vehicle_num > 1:
-                self.vehicle_itr = np.random.choice(len(self.vehicle_ids)) 
+                self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
             else:
                 self.vehicle_itr = 0
 

@@ -34,5 +34,5 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           pip3 install --upgrade pip
-          pip3 install black==22.1.0
+          pip3 install black==22.1.0 click==8.0.2
           black --check .

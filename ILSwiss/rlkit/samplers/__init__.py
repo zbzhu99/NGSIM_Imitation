@@ -157,7 +157,8 @@ class PathSampler:
 
 
 class MultiagentPathSampler:
-    """ NOTE(zbzhu): Deprecated. Use PathSampler instead. """
+    """NOTE(zbzhu): Deprecated. Use PathSampler instead."""
+
     def __init__(
         self,
         env,
