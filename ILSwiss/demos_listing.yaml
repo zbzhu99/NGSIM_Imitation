@@ -1,7 +1,7 @@
 smarts_i80:
   description: "SMARTS, NGSIM, I80"
   file_paths: [
-    ./demos/ngsim/smarts_ngsim_stack-1_LANE.pkl
+    ./demos/ngsim/smarts_NGSIM-I80_stack-4_RADIUS_EGO.pkl
   ]
   eval_split: [
     ./demos/ngsim/test_ids.pkl

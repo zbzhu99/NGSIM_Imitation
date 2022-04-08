@@ -29,7 +29,7 @@ import numpy as np
 from collections import namedtuple
 
 from smarts.core.sensors import Observation
-from smarts.core.utils.math import vec_2d
+from smarts.core.utils.math import vec_2d, vec_to_radians, radians_to_vec
 
 
 Config = namedtuple(
@@ -52,21 +52,16 @@ SPACE_LIB = dict(
     # ),
     img_gray=lambda shape: gym.spaces.Box(low=0.0, high=1.0, shape=shape),
     neighbor_dict=lambda shape: gym.spaces.Dict(),
+    ego_dynamics=lambda shape: gym.spaces.Box(low=-330, high=330, shape=shape),
+    neighbor_with_radius=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
+    neighbor_with_radius_ego_coordinate=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
 )
 
 
-def _cal_angle(vec):
-
-    if vec[1] < 0:
-        base_angle = math.pi
-        base_vec = np.array([-1.0, 0.0])
-    else:
-        base_angle = 0.0
-        base_vec = np.array([1.0, 0.0])
-
-    cos = vec.dot(base_vec) / np.sqrt(vec.dot(vec) * base_vec.dot(base_vec))
-    angle = math.acos(cos)
-    return angle + base_angle
+def _legalize_angle(angle):
+    """ Return the angle within range [0, 2pi)
+    """
+    return angle % (2 * math.pi)
 
 
 def _get_closest_vehicles(ego, neighbor_vehicles, n):
@@ -77,10 +72,32 @@ def _get_closest_vehicles(ego, neighbor_vehicles, n):
     # get partition
     for v in neighbor_vehicles:
         v_pos = v.position[:2]
-        rel_pos_vec = np.asarray([v_pos[0] - ego_pos[0], v_pos[1] - ego_pos[1]])
+        rel_pos_vec = np.array([v_pos[0] - ego_pos[0], v_pos[1] - ego_pos[1]])
         # calculate its partitions
-        angle = _cal_angle(rel_pos_vec)
+        angle = vec_to_radians(rel_pos_vec)
         i = int(angle / partition_size)
+        dist = np.sqrt(rel_pos_vec.dot(rel_pos_vec))
+        if dist < groups[i][1]:
+            groups[i] = (v, dist)
+
+    return groups
+
+
+def _get_closest_vehicles_with_ego_coordinate(ego, neighbor_vehicles, n):
+    """将周角分成n个区域，获取每个区域最近的车辆"""
+    ego_pos = ego.position[:2]
+
+    groups = {i: (None, float("inf")) for i in range(n)}
+    partition_size = math.pi * 2.0 / n
+    # get partition
+    for v in neighbor_vehicles:
+        v_pos = v.position[:2]
+        rel_pos_vec = np.array([v_pos[0] - ego_pos[0], v_pos[1] - ego_pos[1]])
+        # calculate its partitions
+        angle = vec_to_radians(rel_pos_vec)
+        rel_angle = angle - ego.heading
+        rel_angle = _legalize_angle(rel_angle)
+        i = int(rel_angle / partition_size)
         dist = np.sqrt(rel_pos_vec.dot(rel_pos_vec))
         if dist < groups[i][1]:
             groups[i] = (v, dist)
@@ -95,12 +112,18 @@ def _get_relative_position(ego, neighbor_vehicle, relative_lane):
 
 class CalObs:
     @staticmethod
+    def cal_ego_dynamics(env_obs: Observation, **kwargs):
+        ego = env_obs.ego_vehicle_state
+        ego_dynamics = np.array([float(ego.speed)], dtype='float64').reshape((-1,))
+        return ego_dynamics
+
+    @staticmethod
     def cal_ego_pos(env_obs: Observation, **kwargs):
         return env_obs.ego_vehicle_state.position[:2]
 
     @staticmethod
     def cal_heading(env_obs: Observation, **kwargs):
-        return np.asarray(float(env_obs.ego_vehicle_state.heading))
+        return np.array(float(env_obs.ego_vehicle_state.heading))
 
     @staticmethod
     def cal_distance_to_center(env_obs: Observation, **kwargs):
@@ -117,12 +140,13 @@ class CalObs:
         # TODO(ming): for the case of overwhilm, it will throw error
         norm_dist_from_center = signed_dist_to_center / lane_hwidth
 
-        dist = np.asarray([norm_dist_from_center])
+        dist = np.array([norm_dist_from_center])
         return dist
 
     @staticmethod
     def cal_heading_errors(env_obs: Observation, **kwargs):
-        look_ahead = kwargs["look_ahead"]
+        #look_ahead = kwargs["look_ahead"]
+        look_ahead = 3
         ego = env_obs.ego_vehicle_state
         waypoint_paths = env_obs.waypoint_paths
         wps = [path[0] for path in waypoint_paths]
@@ -141,18 +165,18 @@ class CalObs:
             )
 
         # assert len(heading_errors) == look_ahead
-        return np.asarray(heading_errors)
+        return np.array(heading_errors)
 
     @staticmethod
     def cal_speed(env_obs: Observation, **kwargs):
         ego = env_obs.ego_vehicle_state
-        res = np.asarray([ego.speed])
+        res = np.array([ego.speed])
         return res
 
     @staticmethod
     def cal_steering(env_obs: Observation, **kwargs):
         ego = env_obs.ego_vehicle_state
-        return np.asarray([ego.steering / 45.0])
+        return np.array([ego.steering / 45.0])
 
     @staticmethod
     def cal_neighbor_with_radius(env_obs: Observation, **kwargs):
@@ -172,12 +196,32 @@ class CalObs:
                 v = v[0]
 
             pos = v.position[:2]
-            heading = np.asarray(float(v.heading))
-            speed = np.asarray(v.speed)
+            heading = np.array(float(v.heading))
+            speed = np.array(v.speed)
 
-            features[i, :] = np.asarray([pos[0], pos[1], heading, speed])
+            features[i, :] = np.array([pos[0], pos[1], heading, speed])
 
         return features.reshape((-1,))
+
+    @staticmethod
+    def cal_neighbor_with_radius_ego_coordinate(env_obs: Observation, **kwargs):
+        ego = env_obs.ego_vehicle_state
+        neighbor_vehicle_states = env_obs.neighborhood_vehicle_states
+        closest_neighbor_num = kwargs.get("closest_neighbor_num", 8)
+        # dist, speed, ttc, pos
+        features = np.zeros((closest_neighbor_num, ), dtype='float64')
+        # get the closest vehicles according to the ego coordinate system
+        surrounding_vehicles = _get_closest_vehicles_with_ego_coordinate(
+            ego, neighbor_vehicle_states, n=closest_neighbor_num
+        )
+        for i, v in surrounding_vehicles.items():
+            if v[0] is None:
+                dist = 15.0
+            else:
+                dist = min(v[1], 15.0)
+            features[i] = dist
+
+        return features
 
     @staticmethod
     def cal_neighbor_with_lanes(env_obs: Observation, **kwargs):
@@ -212,7 +256,7 @@ class CalObs:
             if abs(ego_lane_index - path_idx) > 1:
                 # not in neighbor lane
                 continue
-            rel_pos_vec = np.asarray(
+            rel_pos_vec = np.array(
                 [v.position[0] - ego.position[0], v.position[1] - ego.position[1]]
             )
             pos_id = _get_relative_position(ego, v, ego_lane_index - path_idx)
@@ -227,10 +271,10 @@ class CalObs:
                 v = v[0]
 
             pos = v.position[:2]
-            heading = np.asarray(float(v.heading))
-            speed = np.asarray(v.speed)
+            heading = np.array(float(v.heading))
+            speed = np.array(v.speed)
 
-            features[i, :] = np.asarray([pos[0], pos[1], heading, speed])
+            features[i, :] = np.array([pos[0], pos[1], heading, speed])
 
         return features.reshape((-1,))
 
@@ -281,12 +325,13 @@ class CalObs:
             # relative_speed_m_per_s = (ego.speed - v.speed) * 1000 / 3600
             # relative_speed_m_per_s = max(abs(relative_speed_m_per_s), 1e-5)
             dist_wp_vehicle_vector = vec_2d(v.position) - vec_2d(nearest_wp.pos)
-            direction_vector = np.array(
-                [
-                    math.cos(math.radians(nearest_wp.heading)),
-                    math.sin(math.radians(nearest_wp.heading)),
-                ]
-            ).dot(dist_wp_vehicle_vector)
+            # direction_vector = np.array(
+            #     [
+            #         math.cos(math.radians(nearest_wp.heading)),
+            #         math.sin(math.radians(nearest_wp.heading)),
+            #     ]
+            # ).dot(dist_wp_vehicle_vector)
+            direction_vector = radians_to_vec.dot(dist_wp_vehicle_vector)
 
             dist_to_vehicle = lane_dist + np.sign(direction_vector) * (
                 np.linalg.norm(vec_2d(nearest_wp.pos) - vec_2d(v.position))
@@ -316,7 +361,7 @@ class CalObs:
         ]
         ego_lane_dist[flag + left_sign] = lane_dist_by_path[ego_lane_index + left_sign]
 
-        res = np.asarray(ego_lane_dist + [speed_of_closest])
+        res = np.array(ego_lane_dist + [speed_of_closest])
         return res
         # space = SPACE_LIB["goal_relative_pos"](res.shape)
         # return (res - space.low) / (space.high - space.low)
@@ -353,10 +398,10 @@ class CalObs:
                 v = v[0]
 
             pos = v.position[:2]
-            heading = np.asarray(float(v.heading))
-            speed = np.asarray(v.speed)
+            heading = np.array(float(v.heading))
+            speed = np.array(v.speed)
 
-            neighbor_dict[v.id] = np.asarray([pos[0], pos[1], heading, speed])
+            neighbor_dict[v.id] = np.array([pos[0], pos[1], heading, speed])
 
         return neighbor_dict
 

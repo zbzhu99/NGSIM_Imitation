@@ -18,7 +18,7 @@ class SMARTSImitation:
         self,
         scenarios: List[str],
         action_range: np.ndarray,
-        obs_stacked_size: int = 1,
+        obs_stack_size: int = 1,
         vehicle_ids: np.ndarray = None,
         control_all_vehicles: bool = False,
         control_vehicle_num: int = 1,
@@ -30,7 +30,7 @@ class SMARTSImitation:
     ):
         self.neighbor_mode = neighbor_mode
         self.control_all_vehicles = control_all_vehicles
-        self.obs_stacked_size = obs_stacked_size
+        self.obs_stack_size = obs_stack_size
 
         self.control_vehicle_num = self.n_agents = control_vehicle_num
         self.vehicle_ids = vehicle_ids
@@ -39,8 +39,6 @@ class SMARTSImitation:
 
         self.scenarios_iterator = Scenario.scenario_variations(scenarios, [])
         self._init_scenario()
-        # Num of all combinations of different controlled vehicles used.
-        self.episode_num = len(self.vehicle_ids) - self.control_vehicle_num + 1
 
         if self.control_all_vehicles:
             print("Control All Vehicles")
@@ -54,7 +52,7 @@ class SMARTSImitation:
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(28 * self.obs_stacked_size,),
+            shape=(12 * self.obs_stack_size,),
             dtype=np.float64,
         )
         self.action_space = gym.spaces.Box(
@@ -80,9 +78,9 @@ class SMARTSImitation:
             envision=envision_client,
         )
 
-        if obs_stacked_size > 1:
+        if obs_stack_size > 1:
             self.obs_queue_n = {
-                a_id: deque(maxlen=obs_stacked_size) for a_id in self.agent_ids
+                a_id: deque(maxlen=obs_stack_size) for a_id in self.agent_ids
             }
 
     def seed(self, seed):
@@ -94,16 +92,10 @@ class SMARTSImitation:
             observation = self.agent_spec.observation_adapter(
                 raw_observations[agent_id]
             )
-            ego_state = []
-            other_info = []
+            all_states = []
             for feat in observation:
-                if feat in ["ego_pos", "speed", "heading"]:
-                    ego_state.append(observation[feat])
-                else:
-                    other_info.append(observation[feat])
-            ego_state = np.concatenate(ego_state, axis=-1).reshape(-1)
-            other_info = np.concatenate(other_info, axis=-1).reshape(-1)
-            full_obs = np.concatenate((ego_state, other_info))
+                all_states.append(observation[feat])
+            full_obs = np.concatenate(all_states, axis=-1).reshape(-1)
             full_obs_n[agent_id] = full_obs
         return full_obs_n
 
@@ -124,7 +116,7 @@ class SMARTSImitation:
 
         raw_observation_n, reward_n, self.done_n, _ = self.smarts.step(scaled_action_n)
         full_obs_n = self._convert_obs(raw_observation_n)
-        if self.obs_stacked_size > 1:
+        if self.obs_stack_size > 1:
             for agent_id in full_obs_n.keys():
                 self.obs_queue_n[agent_id].append(full_obs_n[agent_id])
                 full_obs_n[agent_id] = np.concatenate(
@@ -150,15 +142,13 @@ class SMARTSImitation:
         )
 
     def reset(self):
-        if self.episode_count == self.episode_num:
-            self.episode_count = 0
-            if self.control_vehicle_num > 1:
-                self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
-            else:
+        if not self.control_all_vehicles and self.vehicle_itr + self.n_agents >= (
+            len(self.vehicle_ids) - 1
+        ):
+            if self.control_vehicle_num == 1:
                 self.vehicle_itr = 0
-
-        if self.vehicle_itr + self.n_agents > len(self.vehicle_ids):
-            self.vehicle_itr = 0
+            else:
+                self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
 
         traffic_history_provider = self.smarts.get_provider_by_type(
             TrafficHistoryProvider
@@ -194,10 +184,10 @@ class SMARTSImitation:
 
         raw_observation_n = self.smarts.reset(self.scenario)
         full_obs_n = self._convert_obs(raw_observation_n)
-        if self.obs_stacked_size > 1:
+        if self.obs_stack_size > 1:
             for agent_id in full_obs_n.keys():
                 self.obs_queue_n[agent_id].extend(
-                    [full_obs_n[agent_id] for _ in range(self.obs_stacked_size)]
+                    [full_obs_n[agent_id] for _ in range(self.obs_stack_size)]
                 )
                 full_obs_n[agent_id] = np.concatenate(
                     [obs for obs in list(self.obs_queue_n[agent_id])],
@@ -205,8 +195,7 @@ class SMARTSImitation:
                 )
 
         self.done_n = {a_id: False for a_id in self.agent_ids}
-        self.vehicle_itr += 1
-        self.episode_count += 1
+        self.vehicle_itr += self.n_agents
         return full_obs_n
 
     def _init_scenario(self):
@@ -225,8 +214,17 @@ class SMARTSImitation:
             ]
             self.vehicle_ids = self.vehicle_ids[np.argsort(vehicle_start_times)]
             self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
-        self.episode_count = 0
+            # self.vehicle_itr = 0
 
     def destroy(self):
         if self.smarts is not None:
             self.smarts.destroy()
+
+
+if __name__ == "__main__":
+    env = SMARTSImitation(
+        [str(Path(__file__).parent.parent.parent / "ngsim_i80")],
+        np.array([[0, 0], [1, 1]]),
+        2,
+    )
+    obs = env.reset()

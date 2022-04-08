@@ -2,7 +2,7 @@ meta_data:
   script_path: run_scripts/adv_irl_exp_script.py
   exp_name: gail_smarts_ngsim
   description: Train an adversarial IRL model
-  num_workers: 1 # 64
+  num_workers: 12 # 64
   using_gpus: true
 # -----------------------------------------------------------------------------
 variables:
@@ -78,7 +78,8 @@ constants:
     env_creator: "smarts"
     scenario_name: "NGSIM-I80"
     env_kwargs:
-      neighbor_mode: "LANE"
+      neighbor_mode: "RADIUS_EGO"
+      obs_stack_size: 4
     training_env_specs:
       env_num: 20
       wait_num: 10

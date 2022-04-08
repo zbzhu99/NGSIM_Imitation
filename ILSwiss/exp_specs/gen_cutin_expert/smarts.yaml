@@ -1,7 +1,7 @@
 meta_data:
-  script_path: run_scripts/gen_smarts_demos.py
-  exp_name: gen_smarts_demos_ngsim
-  description: Generate demonstrations for imitation learning algorithms
+  script_path: run_scripts/gen_smarts_cutin_demos.py
+  exp_name: gen_smarts_cutin_demos_ngsim
+  description: Generate cutin demonstrations for imitation learning algorithms
   num_workers: 1
   using_gpus: true
 # -----------------------------------------------------------------------------
@@ -19,3 +19,7 @@ constants:
     scenario_name: "NGSIM-I80"
     env_kwargs:
       obs_stack_size: 4
+      cutin_dist_threshold: 15
+      steps_before_cutin: 15
+      steps_after_cutin: 15
+      angle_threshold: 1.573

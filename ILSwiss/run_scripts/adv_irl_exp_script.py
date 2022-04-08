@@ -198,7 +198,7 @@ def experiment(variant):
     train_vehicle_ids_list = np.array_split(
         train_vehicle_ids,
         env_specs["training_env_specs"]["env_num"],
-    )
+    ) # control len(train_vehicle_ids) / env_num agents in each env.
 
     print(
         "Creating {} training environments, each with {} vehicles ...".format(
@@ -275,9 +275,9 @@ if __name__ == "__main__":
         format(exp_specs["traj_num"]),
     )
 
-    if "obs_stacked_size" in exp_specs["env_specs"]["env_kwargs"]:
+    if "obs_stack_size" in exp_specs["env_specs"]["env_kwargs"]:
         exp_suffix += "--stack-{}".format(
-            exp_specs["env_specs"]["env_kwargs"]["obs_stacked_size"]
+            exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"]
         )
 
     if not exp_specs["adv_irl_params"]["no_terminal"]:
