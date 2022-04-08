@@ -123,7 +123,7 @@ class CalObs:
 
     @staticmethod
     def cal_heading(env_obs: Observation, **kwargs):
-        return np.array(float(env_obs.ego_vehicle_state.heading))
+        return np.asarray(float(env_obs.ego_vehicle_state.heading))
 
     @staticmethod
     def cal_distance_to_center(env_obs: Observation, **kwargs):
@@ -140,7 +140,7 @@ class CalObs:
         # TODO(ming): for the case of overwhilm, it will throw error
         norm_dist_from_center = signed_dist_to_center / lane_hwidth
 
-        dist = np.array([norm_dist_from_center])
+        dist = np.asarray([norm_dist_from_center])
         return dist
 
     @staticmethod
@@ -165,18 +165,18 @@ class CalObs:
             )
 
         # assert len(heading_errors) == look_ahead
-        return np.array(heading_errors)
+        return np.asarray(heading_errors)
 
     @staticmethod
     def cal_speed(env_obs: Observation, **kwargs):
         ego = env_obs.ego_vehicle_state
-        res = np.array([ego.speed])
+        res = np.asarray([ego.speed])
         return res
 
     @staticmethod
     def cal_steering(env_obs: Observation, **kwargs):
         ego = env_obs.ego_vehicle_state
-        return np.array([ego.steering / 45.0])
+        return np.asarray([ego.steering / 45.0])
 
     @staticmethod
     def cal_neighbor_with_radius(env_obs: Observation, **kwargs):
@@ -196,10 +196,10 @@ class CalObs:
                 v = v[0]
 
             pos = v.position[:2]
-            heading = np.array(float(v.heading))
-            speed = np.array(v.speed)
+            heading = np.asarray(float(v.heading))
+            speed = np.asarray(v.speed)
 
-            features[i, :] = np.array([pos[0], pos[1], heading, speed])
+            features[i, :] = np.asarray([pos[0], pos[1], heading, speed])
 
         return features.reshape((-1,))
 
@@ -271,10 +271,10 @@ class CalObs:
                 v = v[0]
 
             pos = v.position[:2]
-            heading = np.array(float(v.heading))
-            speed = np.array(v.speed)
+            heading = np.asarray(float(v.heading))
+            speed = np.asnarray(v.speed)
 
-            features[i, :] = np.array([pos[0], pos[1], heading, speed])
+            features[i, :] = np.asarray([pos[0], pos[1], heading, speed])
 
         return features.reshape((-1,))
 
@@ -325,12 +325,6 @@ class CalObs:
             # relative_speed_m_per_s = (ego.speed - v.speed) * 1000 / 3600
             # relative_speed_m_per_s = max(abs(relative_speed_m_per_s), 1e-5)
             dist_wp_vehicle_vector = vec_2d(v.position) - vec_2d(nearest_wp.pos)
-            # direction_vector = np.array(
-            #     [
-            #         math.cos(math.radians(nearest_wp.heading)),
-            #         math.sin(math.radians(nearest_wp.heading)),
-            #     ]
-            # ).dot(dist_wp_vehicle_vector)
             direction_vector = radians_to_vec.dot(dist_wp_vehicle_vector)
 
             dist_to_vehicle = lane_dist + np.sign(direction_vector) * (
@@ -361,7 +355,7 @@ class CalObs:
         ]
         ego_lane_dist[flag + left_sign] = lane_dist_by_path[ego_lane_index + left_sign]
 
-        res = np.array(ego_lane_dist + [speed_of_closest])
+        res = np.asarray(ego_lane_dist + [speed_of_closest])
         return res
         # space = SPACE_LIB["goal_relative_pos"](res.shape)
         # return (res - space.low) / (space.high - space.low)
@@ -398,8 +392,8 @@ class CalObs:
                 v = v[0]
 
             pos = v.position[:2]
-            heading = np.array(float(v.heading))
-            speed = np.array(v.speed)
+            heading = np.asarray(float(v.heading))
+            speed = np.asarray(v.speed)
 
             neighbor_dict[v.id] = np.array([pos[0], pos[1], heading, speed])
 

@@ -220,7 +220,7 @@ class SMARTSImitation:
             ]
             self.vehicle_ids = self.vehicle_ids[np.argsort(vehicle_start_times)]
             self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
-         self.episode_count = 0
+        self.episode_count = 0
 
     def destroy(self):
         if self.smarts is not None:
