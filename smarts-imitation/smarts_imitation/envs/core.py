@@ -3,7 +3,6 @@ import numpy as np
 import gym
 from dataclasses import replace
 from collections import deque
-from pathlib import Path
 
 from envision.client import Client as Envision
 from smarts.core.smarts import SMARTS
@@ -23,6 +22,7 @@ class SMARTSImitation:
         control_all_vehicles: bool = False,
         control_vehicle_num: int = 1,
         neighbor_mode: str = "LANE",
+        neighbor_num: int = 6,
         envision: bool = False,
         envision_sim_name: str = None,
         envision_record_data_replay_path: str = None,
@@ -50,7 +50,7 @@ class SMARTSImitation:
         self.aid_to_vid = {}
         self.agent_ids = [f"agent_{i}" for i in range(self.n_agents)]
 
-        self.agent_spec = agent.get_agent_spec(neighbor_mode)
+        self.agent_spec = agent.get_agent_spec(neighbor_mode, neighbor_num)
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -154,7 +154,6 @@ class SMARTSImitation:
         if self.vehicle_itr + self.n_agents > len(self.vehicle_ids):
             self.vehicle_itr = 0
 
-
         traffic_history_provider = self.smarts.get_provider_by_type(
             TrafficHistoryProvider
         )
@@ -225,4 +224,3 @@ class SMARTSImitation:
     def destroy(self):
         if self.smarts is not None:
             self.smarts.destroy()
-

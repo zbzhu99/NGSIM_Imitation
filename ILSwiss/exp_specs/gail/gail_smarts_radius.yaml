@@ -14,7 +14,7 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_i80'
+  expert_name: 'smarts_i80_radius_stack_4'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
@@ -79,6 +79,7 @@ constants:
     scenario_name: "NGSIM-I80"
     env_kwargs:
       neighbor_mode: "RADIUS_EGO"
+      neighbor_num: 8
       obs_stack_size: 4
     training_env_specs:
       env_num: 20

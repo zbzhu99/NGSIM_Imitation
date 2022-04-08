@@ -24,7 +24,6 @@ from smarts.core.scenario import Scenario
 from smarts.core.utils.math import radians_to_vec
 from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
-from copy import deepcopy
 
 
 def split_train_test(scenarios, test_ratio):
@@ -59,7 +58,8 @@ def observation_transform(
     for vehicle_id in raw_observations.keys():
         if obs_stack_size > 1:
             converted_single_obs = convert_single_obs(
-                raw_observations[vehicle_id], observation_adapter)
+                raw_observations[vehicle_id], observation_adapter
+            )
             if vehicle_id not in obs_queues.keys():
                 obs_queues[vehicle_id] = deque(maxlen=obs_stack_size)
                 obs_queues[vehicle_id].extend(
@@ -67,8 +67,10 @@ def observation_transform(
                 )
             else:
                 obs_queues[vehicle_id].append(converted_single_obs)
-            observations[vehicle_id] = np.concatenate(list(obs_queues[vehicle_id]),
-                axis=-1,)
+            observations[vehicle_id] = np.concatenate(
+                list(obs_queues[vehicle_id]),
+                axis=-1,
+            )
         else:
             observations[vehicle_id] = convert_single_obs(
                 raw_observations[vehicle_id], observation_adapter
@@ -90,9 +92,9 @@ def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
     return actions
 
 
-def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode):
+def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode, neighbor_num):
     agent_spec = agent.get_agent_spec()
-    observation_adapter = adapter.get_observation_adapter(neighbor_mode)
+    observation_adapter = adapter.get_observation_adapter(neighbor_mode, neighbor_num)
 
     smarts = SMARTS(
         agent_interfaces={},
@@ -213,6 +215,7 @@ def experiment(specs):
         ScenarioZoo.get_scenario("NGSIM-I80"),
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
         neighbor_mode=specs["neighbor_mode"],
+        neighbor_num=specs["neighbor_num"],
     )
 
     print(

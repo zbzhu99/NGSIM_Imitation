@@ -198,7 +198,7 @@ def experiment(variant):
     train_vehicle_ids_list = np.array_split(
         train_vehicle_ids,
         env_specs["training_env_specs"]["env_num"],
-    ) # control len(train_vehicle_ids) / env_num agents in each env.
+    )  # control len(train_vehicle_ids) / env_num agents in each env.
 
     print(
         "Creating {} training environments, each with {} vehicles ...".format(

@@ -1,6 +1,6 @@
 import abc
 import time
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import Dict, List
 
 import gtimer as gt
@@ -13,8 +13,7 @@ from rlkit.data_management.path_builder import PathBuilder
 from rlkit.policies.base import ExplorationPolicy
 from rlkit.torch.common.policies import MakeDeterministic
 from rlkit.samplers import PathSampler
-import collections
-import time
+
 
 class BaseAlgorithm(metaclass=abc.ABCMeta):
     """
@@ -349,7 +348,6 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
             self.replay_buffer.num_steps_can_sample() >= self.min_steps_before_training
         )
 
-
     def _get_action_and_info(self, observations_n: List[Dict[str, np.ndarray]]):
         """
         Get an action to take in the environment.
@@ -357,18 +355,18 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         :return:
         """
         actions_n = [{} for _ in range(len(observations_n))]
-        policy_obss = collections.defaultdict(list)  # to recover the corresponding actions
-        policy_to_env_agent_id = collections.defaultdict(list)
+        policy_obs_list_n = defaultdict(list)  # to recover the corresponding actions
+        policy_to_env_agent_id = defaultdict(list)
         for idx, observation_n in enumerate(observations_n):  # for each env
             for agent_id in observation_n.keys():  # for each agent in single env.
                 policy_id = self.policy_mapping_dict[agent_id]
                 self.exploration_policy_n[policy_id].set_num_steps_total(
                     self._n_env_steps_total
                 )
-                policy_obss[policy_id].append(observation_n[agent_id])
+                policy_obs_list_n[policy_id].append(observation_n[agent_id])
                 policy_to_env_agent_id[policy_id].append((idx, agent_id))
-        for policy_id in policy_obss:
-            stacked_obs = np.stack(policy_obss[policy_id])
+        for policy_id in policy_obs_list_n:
+            stacked_obs = np.stack(policy_obs_list_n[policy_id])
             actions = self.exploration_policy_n[policy_id].get_actions(stacked_obs)
             for i in range(actions.shape[0]):
                 idx, agent_id = policy_to_env_agent_id[policy_id][i]

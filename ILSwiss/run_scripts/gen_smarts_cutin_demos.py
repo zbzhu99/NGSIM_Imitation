@@ -51,6 +51,7 @@ def convert_single_obs(single_observation, observation_adapter):
     full_obs = np.concatenate(all_states, axis=-1).reshape(-1)
     return full_obs
 
+
 def observation_transform(
     raw_observations, observation_adapter, obs_queues, obs_stack_size
 ):
@@ -58,7 +59,8 @@ def observation_transform(
     for vehicle_id in raw_observations.keys():
         if obs_stack_size > 1:
             converted_single_obs = convert_single_obs(
-                raw_observations[vehicle_id], observation_adapter)
+                raw_observations[vehicle_id], observation_adapter
+            )
             if vehicle_id not in obs_queues.keys():
                 obs_queues[vehicle_id] = deque(maxlen=obs_stack_size)
                 obs_queues[vehicle_id].extend(
@@ -66,8 +68,10 @@ def observation_transform(
                 )
             else:
                 obs_queues[vehicle_id].append(converted_single_obs)
-            observations[vehicle_id] = np.concatenate(list(obs_queues[vehicle_id]),
-                axis=-1,)
+            observations[vehicle_id] = np.concatenate(
+                list(obs_queues[vehicle_id]),
+                axis=-1,
+            )
         else:
             observations[vehicle_id] = convert_single_obs(
                 raw_observations[vehicle_id], observation_adapter
@@ -92,8 +96,7 @@ def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
 def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
     done_vehicle_num = 0
     agent_spec = agent.get_agent_spec()
-    observation_adapter = adapter.get_observation_adapter(
-        specs["neighbor_mode"])
+    observation_adapter = adapter.get_observation_adapter(specs["neighbor_mode"])
 
     smarts = SMARTS(
         agent_interfaces={},
@@ -128,7 +131,7 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
         raw_observations,
         observation_adapter,
         obs_queues,
-        specs["env_specs"]["env_kwargs"]["obs_stack_size"]
+        specs["env_specs"]["env_kwargs"]["obs_stack_size"],
     )
 
     while True:
@@ -152,7 +155,7 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
             raw_next_observations,
             observation_adapter,
             obs_queues,
-            specs["env_specs"]["env_kwargs"]["obs_stack_size"]
+            specs["env_specs"]["env_kwargs"]["obs_stack_size"],
         )
         actions = calculate_actions(raw_observations, raw_next_observations)
 
@@ -164,15 +167,18 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
                 all_original_paths[vehicle_name][-1]["terminals"] = True
 
                 original_path = all_original_paths.pop(vehicle_name)
-                cutin_demo_traj, cutin_steps = get_single_cutin_demo(original_path, specs)
+                cutin_demo_traj, cutin_steps = get_single_cutin_demo(
+                    original_path, specs
+                )
                 if cutin_demo_traj is not None:
                     cutin_demo_trajs.append(cutin_demo_traj)
                     total_cutin_steps += cutin_steps
-                print(f"Agent-{vehicle} Ended, total {done_vehicle_num} Ended. "
-                      f"Cutin Demo Trajs: {len(cutin_demo_trajs)}, "
-                      f"curr steps: {cutin_steps}, "
-                      f"Total cutin steps: {total_cutin_steps}")
-
+                print(
+                    f"Agent-{vehicle} Ended, total {done_vehicle_num} Ended. "
+                    f"Cutin Demo Trajs: {len(cutin_demo_trajs)}, "
+                    f"curr steps: {cutin_steps}, "
+                    f"Total cutin steps: {total_cutin_steps}"
+                )
 
         """ Store data in the corresponding path builder. """
         vehicles = next_observations.keys()
@@ -182,15 +188,17 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
                 if vehicle not in all_original_paths:
                     all_original_paths[vehicle] = []
 
-                all_original_paths[vehicle].append({
-                    "observations": observations[vehicle],
-                    "actions": actions[vehicle],
-                    "rewards": np.array([0.0]),
-                    "next_observations": next_observations[vehicle],
-                    "terminals": np.array([False]),
-                    "raw_observations": raw_observations[vehicle],
-                    "raw_next_observations": raw_next_observations[vehicle],
-                })
+                all_original_paths[vehicle].append(
+                    {
+                        "observations": observations[vehicle],
+                        "actions": actions[vehicle],
+                        "rewards": np.array([0.0]),
+                        "next_observations": next_observations[vehicle],
+                        "terminals": np.array([False]),
+                        "raw_observations": raw_observations[vehicle],
+                        "raw_next_observations": raw_next_observations[vehicle],
+                    }
+                )
 
         raw_observations = raw_next_observations
         observations = next_observations
@@ -199,8 +207,8 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
 
 
 def _is_lane_change_valid(raw_observations, angle_threshold, cutin_dist_threshold):
-    """ Args:
-        raw_observations: raw_observation of ego vehicle after lane change.
+    """Args:
+    raw_observations: raw_observation of ego vehicle after lane change.
     """
     ego = raw_observations.ego_vehicle_state
     neighbor_vehicle_states = raw_observations.neighborhood_vehicle_states
@@ -228,7 +236,9 @@ def _lane_change_steps(original_path, specs):
     lane_change_steps = []
     for i in range(len(original_path)):
         cur_lane = original_path[i]["raw_observations"].ego_vehicle_state.lane_index
-        next_lane = original_path[i]["raw_next_observations"].ego_vehicle_state.lane_index
+        next_lane = original_path[i][
+            "raw_next_observations"
+        ].ego_vehicle_state.lane_index
         if next_lane != cur_lane:
             if _is_lane_change_valid(
                 original_path[i]["raw_next_observations"],
@@ -255,17 +265,17 @@ def get_single_cutin_demo(original_path, specs):
     cur_path_builder = PathBuilder(["agent_0"])
     for i in range(len(original_path)):
         if should_be_save(
-                i,
-                lane_change_steps,
-                specs["env_specs"]["env_kwargs"]["steps_before_cutin"],
-                specs["env_specs"]["env_kwargs"]["steps_after_cutin"],
+            i,
+            lane_change_steps,
+            specs["env_specs"]["env_kwargs"]["steps_before_cutin"],
+            specs["env_specs"]["env_kwargs"]["steps_after_cutin"],
         ):
             cur_path_builder["agent_0"].add_all(
                 observations=original_path[i]["observations"],
                 actions=original_path[i]["actions"],
                 rewards=original_path[i]["rewards"],
                 next_observations=original_path[i]["next_observations"],
-                terminals=original_path[i]["terminals"]
+                terminals=original_path[i]["terminals"],
             )
             cutin_steps += 1
 
@@ -302,7 +312,6 @@ def experiment(specs):
             train_vehicle_ids = pickle.load(f)
         print(f"Loading Train Vehicle Num: {len(train_vehicle_ids)}")
 
-
     # obtain demo paths
     cutin_demo_trajs = sample_cutin_demos(
         train_vehicle_ids,
@@ -317,12 +326,16 @@ def experiment(specs):
     )
 
     file_save_path = Path(save_path).joinpath(
-            "smarts_{}_stack-{}_{}_cutin.pkl".format(
-                exp_specs["env_specs"]["scenario_name"],
-                exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-                exp_specs["neighbor_mode"],
-            ))
-    with open(file_save_path, "wb",) as f:
+        "smarts_{}_stack-{}_{}_cutin.pkl".format(
+            exp_specs["env_specs"]["scenario_name"],
+            exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
+            exp_specs["neighbor_mode"],
+        )
+    )
+    with open(
+        file_save_path,
+        "wb",
+    ) as f:
         pickle.dump(cutin_demo_trajs, f)
 
     return 1
