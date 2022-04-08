@@ -97,6 +97,7 @@ def _get_closest_vehicles_with_ego_coordinate(ego, neighbor_vehicles, n):
         angle = vec_to_radians(rel_pos_vec)
         rel_angle = angle - ego.heading
         rel_angle = _legalize_angle(rel_angle)
+        rel_angle = _legalize_angle(rel_angle + partition_size / 2.0)
         i = int(rel_angle / partition_size)
         dist = np.sqrt(rel_pos_vec.dot(rel_pos_vec))
         if dist < groups[i][1]:
