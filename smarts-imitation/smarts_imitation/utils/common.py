@@ -256,7 +256,7 @@ class CalObs:
             if abs(ego_lane_index - path_idx) > 1:
                 # not in neighbor lane
                 continue
-            rel_pos_vec = np.array(
+            rel_pos_vec = np.asarray(
                 [v.position[0] - ego.position[0], v.position[1] - ego.position[1]]
             )
             pos_id = _get_relative_position(ego, v, ego_lane_index - path_idx)
@@ -272,7 +272,7 @@ class CalObs:
 
             pos = v.position[:2]
             heading = np.asarray(float(v.heading))
-            speed = np.asnarray(v.speed)
+            speed = np.asarray(v.speed)
 
             features[i, :] = np.asarray([pos[0], pos[1], heading, speed])
 
@@ -395,7 +395,7 @@ class CalObs:
             heading = np.asarray(float(v.heading))
             speed = np.asarray(v.speed)
 
-            neighbor_dict[v.id] = np.array([pos[0], pos[1], heading, speed])
+            neighbor_dict[v.id] = np.asarray([pos[0], pos[1], heading, speed])
 
         return neighbor_dict
 
