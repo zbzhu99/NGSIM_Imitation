@@ -10,7 +10,7 @@ from smarts.core.scenario import Scenario
 from smarts.core.traffic_history_provider import TrafficHistoryProvider
 
 from smarts_imitation.utils import agent
-
+from smarts_imitation.utils.common import subscribe_features
 
 class SMARTSImitation:
     def __init__(
@@ -21,16 +21,18 @@ class SMARTSImitation:
         vehicle_ids: np.ndarray = None,
         control_all_vehicles: bool = False,
         control_vehicle_num: int = 1,
-        neighbor_mode: str = "LANE",
-        neighbor_num: int = 6,
+        feature_list: list = [],
+        closest_neighbor_num: int = 6,
+        use_rnn : bool = False,
         envision: bool = False,
         envision_sim_name: str = None,
         envision_record_data_replay_path: str = None,
         headless: bool = False,
     ):
-        self.neighbor_mode = neighbor_mode
+        self.feature_list = feature_list
         self.control_all_vehicles = control_all_vehicles
         self.obs_stack_size = obs_stack_size
+        self.use_rnn = use_rnn
 
         self.control_vehicle_num = self.n_agents = control_vehicle_num
         self.vehicle_ids = vehicle_ids
@@ -50,11 +52,23 @@ class SMARTSImitation:
         self.aid_to_vid = {}
         self.agent_ids = [f"agent_{i}" for i in range(self.n_agents)]
 
-        self.agent_spec = agent.get_agent_spec(neighbor_mode, neighbor_num)
+        self.agent_spec = agent.get_agent_spec(feature_list, closest_neighbor_num)
+
+        feature_spaces = subscribe_features(
+            feature_list, closest_neighbor_num=closest_neighbor_num)
+        feature_shape_sum = 0
+        for _, space in feature_spaces.items():
+            assert len(space.shape) == 1
+            feature_shape_sum += space.shape[0]
+        if self.use_rnn:
+            observation_shape = (self.obs_stack_size, feature_shape_sum,)
+        else:
+            observation_shape = (self.obs_stack_size * feature_shape_sum,)
+
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(12 * self.obs_stack_size,),
+            shape=observation_shape,
             dtype=np.float64,
         )
         self.action_space = gym.spaces.Box(
@@ -121,9 +135,13 @@ class SMARTSImitation:
         if self.obs_stack_size > 1:
             for agent_id in full_obs_n.keys():
                 self.obs_queue_n[agent_id].append(full_obs_n[agent_id])
-                full_obs_n[agent_id] = np.concatenate(
-                    [obs for obs in list(self.obs_queue_n[agent_id])], axis=-1
-                )
+                if self.use_rnn:
+                    full_obs_n[agent_id] = np.stack(
+                        [obs for obs in list(self.obs_queue_n[agent_id])])
+                else:
+                    full_obs_n[agent_id] = np.concatenate(
+                        [obs for obs in list(self.obs_queue_n[agent_id])], axis=-1
+                    )
 
         info_n = {}
         for agent_id in full_obs_n.keys():
@@ -135,6 +153,8 @@ class SMARTSImitation:
                 len(raw_observation_n[agent_id].events.collisions) > 0
             )
             info_n[agent_id]["car_id"] = self.aid_to_vid[agent_id]
+            info_n[agent_id]["raw_position"] = raw_observation_n[agent_id]\
+                .ego_vehicle_state.position
 
         return (
             full_obs_n,
@@ -193,10 +213,14 @@ class SMARTSImitation:
                 self.obs_queue_n[agent_id].extend(
                     [full_obs_n[agent_id] for _ in range(self.obs_stack_size)]
                 )
-                full_obs_n[agent_id] = np.concatenate(
-                    [obs for obs in list(self.obs_queue_n[agent_id])],
-                    axis=-1,
-                )
+                if self.use_rnn:
+                    full_obs_n[agent_id] = np.stack(
+                        [obs for obs in list(self.obs_queue_n[agent_id])])
+                else:
+                    full_obs_n[agent_id] = np.concatenate(
+                        [obs for obs in list(self.obs_queue_n[agent_id])],
+                        axis=-1,
+                    )
 
         self.done_n = {a_id: False for a_id in self.agent_ids}
         self.vehicle_itr += 1

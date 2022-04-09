@@ -52,7 +52,7 @@ def convert_single_obs(single_observation, observation_adapter):
 
 
 def observation_transform(
-    raw_observations, observation_adapter, obs_queues, obs_stack_size
+    raw_observations, observation_adapter, obs_queues, obs_stack_size, use_rnn
 ):
     observations = {}
     for vehicle_id in raw_observations.keys():
@@ -67,10 +67,13 @@ def observation_transform(
                 )
             else:
                 obs_queues[vehicle_id].append(converted_single_obs)
-            observations[vehicle_id] = np.concatenate(
-                list(obs_queues[vehicle_id]),
-                axis=-1,
-            )
+            if not use_rnn:
+                observations[vehicle_id] = np.concatenate(
+                    list(obs_queues[vehicle_id]),
+                    axis=-1,
+                )
+            else:
+                observations[vehicle_id] = np.stack(list(obs_queues[vehicle_id]))
         else:
             observations[vehicle_id] = convert_single_obs(
                 raw_observations[vehicle_id], observation_adapter
@@ -92,9 +95,10 @@ def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
     return actions
 
 
-def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode, neighbor_num):
-    agent_spec = agent.get_agent_spec()
-    observation_adapter = adapter.get_observation_adapter(neighbor_mode, neighbor_num)
+def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, feature_list,
+                 closest_neighbor_num, use_rnn):
+    agent_spec = agent.get_agent_spec(feature_list, closest_neighbor_num)
+    observation_adapter = adapter.get_observation_adapter(feature_list, closest_neighbor_num)
 
     smarts = SMARTS(
         agent_interfaces={},
@@ -124,7 +128,7 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode, ne
         smarts.vehicle_index.social_vehicle_ids()
     )
     observations = observation_transform(
-        raw_observations, observation_adapter, obs_queues, obs_stack_size
+        raw_observations, observation_adapter, obs_queues, obs_stack_size, use_rnn
     )
 
     while True:
@@ -145,7 +149,8 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode, ne
             smarts.vehicle_index.social_vehicle_ids()
         )
         next_observations = observation_transform(
-            raw_next_observations, observation_adapter, obs_queues, obs_stack_size
+            raw_next_observations, observation_adapter, obs_queues,
+            obs_stack_size, use_rnn
         )
         actions = calculate_actions(raw_observations, raw_next_observations)
 
@@ -214,8 +219,9 @@ def experiment(specs):
         train_vehicle_ids,
         ScenarioZoo.get_scenario("NGSIM-I80"),
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-        neighbor_mode=specs["neighbor_mode"],
-        neighbor_num=specs["neighbor_num"],
+        feature_list=specs["env_specs"]["env_kwargs"]["feature_list"],
+        closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
+        use_rnn=specs["env_specs"]["env_kwargs"]["use_rnn"],
     )
 
     print(
@@ -226,10 +232,9 @@ def experiment(specs):
 
     with open(
         Path(save_path).joinpath(
-            "smarts_{}_stack-{}_{}.pkl".format(
+            "smarts_{}_stack-{}.pkl".format(
                 exp_specs["env_specs"]["scenario_name"],
                 exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-                exp_specs["neighbor_mode"],
             ),
         ),
         "wb",

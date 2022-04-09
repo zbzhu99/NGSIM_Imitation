@@ -78,9 +78,13 @@ constants:
     env_creator: "smarts"
     scenario_name: "NGSIM-I80"
     env_kwargs:
-      neighbor_mode: "RADIUS_EGO"
-      neighbor_num: 8
+      use_rnn: false
+      closest_neighbor_num: 8
       obs_stack_size: 4
+      feature_list:
+        - ego_dynamics
+        - heading_errors
+        - neighbor_with_radius_ego_coordinate
     training_env_specs:
       env_num: 20
       wait_num: 10

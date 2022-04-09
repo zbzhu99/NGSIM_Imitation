@@ -32,32 +32,6 @@ from smarts.core.sensors import Observation
 from smarts.core.utils.math import vec_2d, vec_to_radians, radians_to_vec
 
 
-Config = namedtuple(
-    "Config", "name, agent, interface, policy, learning, other, trainer"
-)
-FeatureMetaInfo = namedtuple("FeatureMetaInfo", "space, data")
-
-
-SPACE_LIB = dict(
-    distance_to_center=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    heading_errors=lambda shape: gym.spaces.Box(low=-1.0, high=1.0, shape=shape),
-    speed=lambda shape: gym.spaces.Box(low=-330.0, high=330.0, shape=shape),
-    steering=lambda shape: gym.spaces.Box(low=-1.0, high=1.0, shape=shape),
-    neighbor=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    neighbor_with_lanes=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    ego_pos=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    heading=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    # ego_lane_dist_and_speed=lambda shape: gym.spaces.Box(
-    #     low=-1e2, high=1e2, shape=shape
-    # ),
-    img_gray=lambda shape: gym.spaces.Box(low=0.0, high=1.0, shape=shape),
-    neighbor_dict=lambda shape: gym.spaces.Dict(),
-    ego_dynamics=lambda shape: gym.spaces.Box(low=-330, high=330, shape=shape),
-    neighbor_with_radius=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    neighbor_with_radius_ego_coordinate=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-)
-
-
 def _legalize_angle(angle):
     """ Return the angle within range [0, 2pi)
     """
@@ -112,6 +86,31 @@ def _get_relative_position(ego, neighbor_vehicle, relative_lane):
 
 
 class CalObs:
+
+    @staticmethod
+    def get_feature_space(feature_name, **kwargs):
+        if not hasattr(CalObs, "_spaces"):
+            CalObs._spaces = dict(
+                ego_dynamics=gym.spaces.Box(low=-330, high=330, shape=(1,)),
+                ego_pos=gym.spaces.Box(low=-1e3, high=1e3, shape=(2,)),
+                heading=gym.spaces.Box(low=-1e3, high=1e3, shape=(1,)),
+                distance_to_center=gym.spaces.Box(low=-1e3, high=1e3, shape=(1,)),
+                heading_errors=gym.spaces.Box(low=-1.0, high=1.0, shape=(3,)),
+                speed=gym.spaces.Box(low=-330.0, high=330.0, shape=(1,)),
+                steering=gym.spaces.Box(low=-1.0, high=1.0, shape=(1,)),
+                neighbor_with_radius=gym.spaces.Box(low=-1e3,
+                                                    high=1e3,
+                                                    shape=(kwargs.get("closest_neighbor_num") * 4,)),
+                neighbor_with_radius_ego_coordinate=gym.spaces.Box(low=-1e3,
+                                                                   high=1e3,
+                                                                   shape=(
+                                                                    kwargs.get("closest_neighbor_num"),)),
+                neighbor_with_lanes=gym.spaces.Box(low=-1e3,
+                                                   high=1e3,
+                                                   shape=(kwargs.get("closest_neighbor_num") * 4,)),
+            )
+        return CalObs._spaces[feature_name]
+
     @staticmethod
     def cal_ego_dynamics(env_obs: Observation, **kwargs):
         ego = env_obs.ego_vehicle_state
@@ -423,13 +422,10 @@ def _cal_obs(env_obs: Observation, space, **kwargs):
     return obs
 
 
-def subscribe_features(**kwargs):
+def subscribe_features(feature_list, **kwargs):
     res = dict()
-
-    for k, config in kwargs.items():
-        if bool(config):
-            res[k] = SPACE_LIB[k](config)
-
+    for feature_name in feature_list:
+        res[feature_name] = CalObs.get_feature_space(feature_name, **kwargs)
     return res
 
 

@@ -31,28 +31,17 @@ def get_generic_path_information(paths, env, stat_prefix=""):
 
     statistics = OrderedDict()
 
-    # driving scenarios specific metrics
-    if hasattr(env, "get_unscaled_obs"):
-        distance_travelled_n = {
-            a_id: [
-                abs(
-                    env.get_unscaled_obs(path[a_id]["observations"][-1])[0]
-                    - env.get_unscaled_obs(path[a_id]["observations"][0])[0]
-                )
-                for path in paths
-            ]
-            for a_id in agent_ids
-        }
-    else:
-        distance_travelled_n = {
-            a_id: [
-                abs(
-                    path[a_id]["observations"][-1][0] - path[a_id]["observations"][0][0]
-                )
-                for path in paths
-            ]
-            for a_id in agent_ids
-        }
+    distance_travelled_n = {}
+    for a_id in agent_ids:
+        distance_travelled = []
+        for path in paths:
+            distance = 0
+            for i in range(1, len(path[a_id]["env_infos"])):
+                distance += np.linalg.norm(
+                    path[a_id]["env_infos"][i]["raw_position"][:2] -
+                    path[a_id]["env_infos"][i-1]["raw_position"][:2])
+            distance_travelled.append(distance)
+        distance_travelled_n[a_id] = distance_travelled
 
     success_rate_n = {
         a_id: float(sum(path[a_id]["env_infos"][-1]["reached_goal"] for path in paths))

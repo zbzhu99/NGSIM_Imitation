@@ -5,7 +5,7 @@ import sys
 import pickle
 import inspect
 from pathlib import Path
-from collections import deque
+from collections import defaultdict
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -14,7 +14,8 @@ print(sys.path)
 
 import numpy as np
 import math
-from copy import deepcopy
+from gen_smarts_demos import observation_transform, calculate_actions, \
+    split_train_test
 
 from rlkit.data_management.path_builder import PathBuilder
 from rlkit.launchers.launcher_util import set_seed
@@ -26,77 +27,18 @@ from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.common import _legalize_angle
 
-
-def split_train_test(scenarios, test_ratio):
-    scenario_iterator = Scenario.scenario_variations(
-        [scenarios],
-        list([]),
-    )
-    scenario = next(scenario_iterator)
-    vehicle_missions = scenario.discover_missions_of_traffic_histories()
-    vehicle_ids = list(vehicle_missions.keys())
-    np.random.shuffle(vehicle_ids)
-
-    test_vehicle_ids = vehicle_ids[: int(len(vehicle_ids) * test_ratio)]
-    train_vehicle_ids = vehicle_ids[int(len(vehicle_ids) * test_ratio) :]
-
-    return train_vehicle_ids, test_vehicle_ids
-
-
-def convert_single_obs(single_observation, observation_adapter):
-    observation = observation_adapter(single_observation)
-    all_states = []
-    for feat in observation:
-        all_states.append(observation[feat])
-    full_obs = np.concatenate(all_states, axis=-1).reshape(-1)
-    return full_obs
-
-
-def observation_transform(
-    raw_observations, observation_adapter, obs_queues, obs_stack_size
-):
-    observations = {}
-    for vehicle_id in raw_observations.keys():
-        if obs_stack_size > 1:
-            converted_single_obs = convert_single_obs(
-                raw_observations[vehicle_id], observation_adapter
-            )
-            if vehicle_id not in obs_queues.keys():
-                obs_queues[vehicle_id] = deque(maxlen=obs_stack_size)
-                obs_queues[vehicle_id].extend(
-                    [deepcopy(converted_single_obs) for _ in range(obs_stack_size)]
-                )
-            else:
-                obs_queues[vehicle_id].append(converted_single_obs)
-            observations[vehicle_id] = np.concatenate(
-                list(obs_queues[vehicle_id]),
-                axis=-1,
-            )
-        else:
-            observations[vehicle_id] = convert_single_obs(
-                raw_observations[vehicle_id], observation_adapter
-            )
-    return observations
-
-
-def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
-    actions = {}
-    for car in raw_observations.keys():
-        if car not in raw_next_observations.keys():
-            continue
-        car_next_state = raw_next_observations[car].ego_vehicle_state
-        acceleration = car_next_state.linear_acceleration[:2].dot(
-            radians_to_vec(car_next_state.heading)
-        )
-        angular_velocity = car_next_state.yaw_rate
-        actions[car] = np.array([acceleration, angular_velocity])
-    return actions
-
+lane_change_stats = defaultdict(int)
 
 def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
     done_vehicle_num = 0
-    agent_spec = agent.get_agent_spec()
-    observation_adapter = adapter.get_observation_adapter(specs["neighbor_mode"])
+    agent_spec = agent.get_agent_spec(
+        specs["env_specs"]["env_kwargs"]["feature_list"],
+        specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
+    )
+    observation_adapter = adapter.get_observation_adapter(
+        feature_list=specs["env_specs"]["env_kwargs"]["feature_list"],
+        closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
+    )
 
     smarts = SMARTS(
         agent_interfaces={},
@@ -132,6 +74,7 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
         observation_adapter,
         obs_queues,
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
+        specs["env_specs"]["env_kwargs"]["use_rnn"],
     )
 
     while True:
@@ -156,6 +99,7 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
             observation_adapter,
             obs_queues,
             specs["env_specs"]["env_kwargs"]["obs_stack_size"],
+            specs["env_specs"]["env_kwargs"]["use_rnn"],
         )
         actions = calculate_actions(raw_observations, raw_next_observations)
 
@@ -173,12 +117,11 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
                 if cutin_demo_traj is not None:
                     cutin_demo_trajs.append(cutin_demo_traj)
                     total_cutin_steps += cutin_steps
-                print(
-                    f"Agent-{vehicle} Ended, total {done_vehicle_num} Ended. "
-                    f"Cutin Demo Trajs: {len(cutin_demo_trajs)}, "
-                    f"curr steps: {cutin_steps}, "
-                    f"Total cutin steps: {total_cutin_steps}"
-                )
+                print(f"Agent-{vehicle} Ended, total {done_vehicle_num} Ended. "
+                      f"Cutin Demo Trajs: {len(cutin_demo_trajs)}, "
+                      f"curr steps: {cutin_steps}, "
+                      f"Total cutin steps: {total_cutin_steps}",
+                      f"curr_stats: {lane_change_stats}")
 
         """ Store data in the corresponding path builder. """
         vehicles = next_observations.keys()
@@ -233,6 +176,7 @@ def _is_lane_change_valid(raw_observations, angle_threshold, cutin_dist_threshol
 
 
 def _lane_change_steps(original_path, specs):
+    global lane_change_stats
     lane_change_steps = []
     for i in range(len(original_path)):
         cur_lane = original_path[i]["raw_observations"].ego_vehicle_state.lane_index
@@ -246,6 +190,7 @@ def _lane_change_steps(original_path, specs):
                 specs["env_specs"]["env_kwargs"]["cutin_dist_threshold"],
             ):
                 lane_change_steps.append(i)
+                lane_change_stats[(cur_lane, next_lane)] += 1
     return lane_change_steps
 
 
@@ -326,10 +271,9 @@ def experiment(specs):
     )
 
     file_save_path = Path(save_path).joinpath(
-        "smarts_{}_stack-{}_{}_cutin.pkl".format(
+        "smarts_{}_stack-{}_cutin.pkl".format(
             exp_specs["env_specs"]["scenario_name"],
             exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-            exp_specs["neighbor_mode"],
         )
     )
     with open(

@@ -12,14 +12,19 @@ constants:
 
   seed: 0
   test_ratio: 0.15
-  neighbor_mode: "RADIUS_EGO"
 
   env_specs:
     env_creator: "smarts"
     scenario_name: "NGSIM-I80"
     env_kwargs:
+      closest_neighbor_num: 8
       obs_stack_size: 4
+      use_rnn: false
       cutin_dist_threshold: 15
       steps_before_cutin: 15
       steps_after_cutin: 15
       angle_threshold: 1.573
+      feature_list:
+        - ego_dynamics
+        - heading_errors
+        - neighbor_with_radius_ego_coordinate

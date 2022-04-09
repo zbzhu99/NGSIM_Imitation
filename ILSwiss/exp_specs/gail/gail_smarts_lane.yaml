@@ -78,9 +78,14 @@ constants:
     env_creator: "smarts"
     scenario_name: "NGSIM-I80"
     env_kwargs:
-      neighbor_mode: "LANE"
-      neighbor_num: 6
+      use_rnn: false
+      closest_neighbor_num: 6
       obs_stack_size: 4
+      feature_list:
+        - ego_pos
+        - heading
+        - speed
+        - neighbor_with_lanes
     training_env_specs:
       env_num: 20
       wait_num: 10

@@ -5,7 +5,7 @@ from smarts.core.controllers import ActionSpaceType
 from smarts_imitation.utils import adapter
 
 
-def get_agent_spec(neighbor_mode: str = "LANE", neighbor_num: int = 6):
+def get_agent_spec(feature_list, closest_neighbor_num):
     agent_spec = AgentSpec(
         interface=AgentInterface(
             max_episode_steps=None,
@@ -17,8 +17,8 @@ def get_agent_spec(neighbor_mode: str = "LANE", neighbor_num: int = 6):
             action=ActionSpaceType.Imitation,
         ),
         observation_adapter=adapter.get_observation_adapter(
-            neighbor_mode=neighbor_mode,
-            neighbor_num=neighbor_num,
+            feature_list=feature_list,
+            closest_neighbor_num=closest_neighbor_num,
         ),
         action_adapter=adapter.get_action_adapter(),
     )
