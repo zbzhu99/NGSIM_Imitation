@@ -21,7 +21,7 @@ from rlkit.launchers.launcher_util import set_seed
 
 from smarts.core.smarts import SMARTS
 from smarts.core.scenario import Scenario
-from smarts.core.utils.math import radians_to_vec, vec_to_radians
+from smarts.core.utils.math import vec_to_radians
 from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.common import _legalize_angle

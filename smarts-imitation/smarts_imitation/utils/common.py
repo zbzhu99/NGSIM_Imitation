@@ -21,12 +21,11 @@ obs_adapter = get_observation_adapter(
 )
 
 """
+
 import math
 import gym
 import cv2
 import numpy as np
-
-from collections import namedtuple
 
 from smarts.core.sensors import Observation
 from smarts.core.utils.math import vec_2d, vec_to_radians, radians_to_vec
@@ -38,7 +37,7 @@ def _legalize_angle(angle):
 
 
 def _get_closest_vehicles(ego, neighbor_vehicles, n):
-    """将周角分成n个区域，获取每个区域最近的车辆"""
+    """将周角分成n个区域, 获取每个区域最近的车辆"""
     ego_pos = ego.position[:2]
     groups = {i: (None, 1e10) for i in range(n)}
     partition_size = math.pi * 2.0 / n
@@ -57,7 +56,7 @@ def _get_closest_vehicles(ego, neighbor_vehicles, n):
 
 
 def _get_closest_vehicles_with_ego_coordinate(ego, neighbor_vehicles, n):
-    """将周角分成n个区域，获取每个区域最近的车辆"""
+    """将周角分成n个区域, 获取每个区域最近的车辆"""
     ego_pos = ego.position[:2]
 
     groups = {i: (None, float("inf")) for i in range(n)}

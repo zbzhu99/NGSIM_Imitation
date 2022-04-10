@@ -22,6 +22,8 @@ from rlkit.launchers.launcher_util import set_seed
 from smarts.core.smarts import SMARTS
 from smarts.core.scenario import Scenario
 from smarts.core.utils.math import radians_to_vec
+
+from smarts_imitation.utils.feature_group import FeatureGroup
 from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 
@@ -230,7 +232,7 @@ def experiment(specs):
         train_vehicle_ids,
         ScenarioZoo.get_scenario("NGSIM-I80"),
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-        feature_list=specs["env_specs"]["env_kwargs"]["feature_list"],
+        feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
         closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
         use_rnn=specs["env_specs"]["env_kwargs"]["use_rnn"],
     )
@@ -243,8 +245,9 @@ def experiment(specs):
 
     with open(
         Path(save_path).joinpath(
-            "smarts_{}_stack-{}.pkl".format(
+            "smarts_{}_{}_stack-{}.pkl".format(
                 exp_specs["env_specs"]["scenario_name"],
+                exp_specs["env_specs"]["env_kwargs"]["feature_type"],
                 exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
             ),
         ),

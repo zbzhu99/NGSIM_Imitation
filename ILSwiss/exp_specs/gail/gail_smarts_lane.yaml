@@ -81,11 +81,7 @@ constants:
       use_rnn: false
       closest_neighbor_num: 6
       obs_stack_size: 4
-      feature_list:
-        - ego_pos
-        - heading
-        - speed
-        - neighbor_with_lanes
+      feature_type: "lane"
     training_env_specs:
       env_num: 20
       wait_num: 10

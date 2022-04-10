@@ -11,6 +11,7 @@ from smarts.core.traffic_history_provider import TrafficHistoryProvider
 
 from smarts_imitation.utils import agent
 from smarts_imitation.utils.common import subscribe_features
+from smarts_imitation.utils.feature_group import FeatureGroup
 
 
 class SMARTSImitation:
@@ -22,7 +23,7 @@ class SMARTSImitation:
         vehicle_ids: np.ndarray = None,
         control_all_vehicles: bool = False,
         control_vehicle_num: int = 1,
-        feature_list: list = [],
+        feature_type: str = "radius",
         closest_neighbor_num: int = 6,
         use_rnn: bool = False,
         envision: bool = False,
@@ -30,7 +31,7 @@ class SMARTSImitation:
         envision_record_data_replay_path: str = None,
         headless: bool = False,
     ):
-        self.feature_list = feature_list
+        self.feature_list = FeatureGroup[feature_type]
         self.control_all_vehicles = control_all_vehicles
         self.obs_stack_size = obs_stack_size
         self.use_rnn = use_rnn
@@ -53,10 +54,10 @@ class SMARTSImitation:
         self.aid_to_vid = {}
         self.agent_ids = [f"agent_{i}" for i in range(self.n_agents)]
 
-        self.agent_spec = agent.get_agent_spec(feature_list, closest_neighbor_num)
+        self.agent_spec = agent.get_agent_spec(self.feature_list, closest_neighbor_num)
 
         feature_spaces = subscribe_features(
-            feature_list, closest_neighbor_num=closest_neighbor_num
+            self.feature_list, closest_neighbor_num=closest_neighbor_num
         )
         feature_shape_sum = 0
         for _, space in feature_spaces.items():
