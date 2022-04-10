@@ -95,10 +95,18 @@ def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
     return actions
 
 
-def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, feature_list,
-                 closest_neighbor_num, use_rnn):
+def sample_demos(
+    train_vehicle_ids,
+    scenarios,
+    obs_stack_size,
+    feature_list,
+    closest_neighbor_num,
+    use_rnn,
+):
     agent_spec = agent.get_agent_spec(feature_list, closest_neighbor_num)
-    observation_adapter = adapter.get_observation_adapter(feature_list, closest_neighbor_num)
+    observation_adapter = adapter.get_observation_adapter(
+        feature_list, closest_neighbor_num
+    )
 
     smarts = SMARTS(
         agent_interfaces={},
@@ -149,8 +157,11 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, feature_list,
             smarts.vehicle_index.social_vehicle_ids()
         )
         next_observations = observation_transform(
-            raw_next_observations, observation_adapter, obs_queues,
-            obs_stack_size, use_rnn
+            raw_next_observations,
+            observation_adapter,
+            obs_queues,
+            obs_stack_size,
+            use_rnn,
         )
         actions = calculate_actions(raw_observations, raw_next_observations)
 

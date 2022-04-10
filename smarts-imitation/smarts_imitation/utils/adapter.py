@@ -7,8 +7,9 @@ def get_observation_adapter(feature_list, closest_neighbor_num):
     observe_lane_num = 3
 
     observation_space = gym.spaces.Dict(
-        common.subscribe_features(feature_list,
-                                  closest_neighbor_num=closest_neighbor_num)
+        common.subscribe_features(
+            feature_list, closest_neighbor_num=closest_neighbor_num
+        )
     )
 
     observation_adapter = common.get_observation_adapter(

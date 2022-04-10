@@ -33,8 +33,7 @@ from smarts.core.utils.math import vec_2d, vec_to_radians, radians_to_vec
 
 
 def _legalize_angle(angle):
-    """ Return the angle within range [0, 2pi)
-    """
+    """Return the angle within range [0, 2pi)"""
     return angle % (2 * math.pi)
 
 
@@ -86,7 +85,6 @@ def _get_relative_position(ego, neighbor_vehicle, relative_lane):
 
 
 class CalObs:
-
     @staticmethod
     def get_feature_space(feature_name, **kwargs):
         if not hasattr(CalObs, "_spaces"):
@@ -98,23 +96,22 @@ class CalObs:
                 heading_errors=gym.spaces.Box(low=-1.0, high=1.0, shape=(3,)),
                 speed=gym.spaces.Box(low=-330.0, high=330.0, shape=(1,)),
                 steering=gym.spaces.Box(low=-1.0, high=1.0, shape=(1,)),
-                neighbor_with_radius=gym.spaces.Box(low=-1e3,
-                                                    high=1e3,
-                                                    shape=(kwargs.get("closest_neighbor_num") * 4,)),
-                neighbor_with_radius_ego_coordinate=gym.spaces.Box(low=-1e3,
-                                                                   high=1e3,
-                                                                   shape=(
-                                                                    kwargs.get("closest_neighbor_num"),)),
-                neighbor_with_lanes=gym.spaces.Box(low=-1e3,
-                                                   high=1e3,
-                                                   shape=(kwargs.get("closest_neighbor_num") * 4,)),
+                neighbor_with_radius=gym.spaces.Box(
+                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
+                ),
+                neighbor_with_radius_ego_coordinate=gym.spaces.Box(
+                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num"),)
+                ),
+                neighbor_with_lanes=gym.spaces.Box(
+                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
+                ),
             )
         return CalObs._spaces[feature_name]
 
     @staticmethod
     def cal_ego_dynamics(env_obs: Observation, **kwargs):
         ego = env_obs.ego_vehicle_state
-        ego_dynamics = np.array([float(ego.speed)], dtype='float64').reshape((-1,))
+        ego_dynamics = np.array([float(ego.speed)], dtype="float64").reshape((-1,))
         return ego_dynamics
 
     @staticmethod
@@ -145,7 +142,7 @@ class CalObs:
 
     @staticmethod
     def cal_heading_errors(env_obs: Observation, **kwargs):
-        #look_ahead = kwargs["look_ahead"]
+        # look_ahead = kwargs["look_ahead"]
         look_ahead = 3
         ego = env_obs.ego_vehicle_state
         waypoint_paths = env_obs.waypoint_paths
@@ -209,7 +206,7 @@ class CalObs:
         neighbor_vehicle_states = env_obs.neighborhood_vehicle_states
         closest_neighbor_num = kwargs.get("closest_neighbor_num", 8)
         # dist, speed, ttc, pos
-        features = np.zeros((closest_neighbor_num, ), dtype='float64')
+        features = np.zeros((closest_neighbor_num,), dtype="float64")
         # get the closest vehicles according to the ego coordinate system
         surrounding_vehicles = _get_closest_vehicles_with_ego_coordinate(
             ego, neighbor_vehicle_states, n=closest_neighbor_num

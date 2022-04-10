@@ -12,6 +12,7 @@ from smarts.core.traffic_history_provider import TrafficHistoryProvider
 from smarts_imitation.utils import agent
 from smarts_imitation.utils.common import subscribe_features
 
+
 class SMARTSImitation:
     def __init__(
         self,
@@ -23,7 +24,7 @@ class SMARTSImitation:
         control_vehicle_num: int = 1,
         feature_list: list = [],
         closest_neighbor_num: int = 6,
-        use_rnn : bool = False,
+        use_rnn: bool = False,
         envision: bool = False,
         envision_sim_name: str = None,
         envision_record_data_replay_path: str = None,
@@ -55,13 +56,17 @@ class SMARTSImitation:
         self.agent_spec = agent.get_agent_spec(feature_list, closest_neighbor_num)
 
         feature_spaces = subscribe_features(
-            feature_list, closest_neighbor_num=closest_neighbor_num)
+            feature_list, closest_neighbor_num=closest_neighbor_num
+        )
         feature_shape_sum = 0
         for _, space in feature_spaces.items():
             assert len(space.shape) == 1
             feature_shape_sum += space.shape[0]
         if self.use_rnn:
-            observation_shape = (self.obs_stack_size, feature_shape_sum,)
+            observation_shape = (
+                self.obs_stack_size,
+                feature_shape_sum,
+            )
         else:
             observation_shape = (self.obs_stack_size * feature_shape_sum,)
 
@@ -137,7 +142,8 @@ class SMARTSImitation:
                 self.obs_queue_n[agent_id].append(full_obs_n[agent_id])
                 if self.use_rnn:
                     full_obs_n[agent_id] = np.stack(
-                        [obs for obs in list(self.obs_queue_n[agent_id])])
+                        [obs for obs in list(self.obs_queue_n[agent_id])]
+                    )
                 else:
                     full_obs_n[agent_id] = np.concatenate(
                         [obs for obs in list(self.obs_queue_n[agent_id])], axis=-1
@@ -153,8 +159,9 @@ class SMARTSImitation:
                 len(raw_observation_n[agent_id].events.collisions) > 0
             )
             info_n[agent_id]["car_id"] = self.aid_to_vid[agent_id]
-            info_n[agent_id]["raw_position"] = raw_observation_n[agent_id]\
-                .ego_vehicle_state.position
+            info_n[agent_id]["raw_position"] = raw_observation_n[
+                agent_id
+            ].ego_vehicle_state.position
 
         return (
             full_obs_n,
@@ -215,7 +222,8 @@ class SMARTSImitation:
                 )
                 if self.use_rnn:
                     full_obs_n[agent_id] = np.stack(
-                        [obs for obs in list(self.obs_queue_n[agent_id])])
+                        [obs for obs in list(self.obs_queue_n[agent_id])]
+                    )
                 else:
                     full_obs_n[agent_id] = np.concatenate(
                         [obs for obs in list(self.obs_queue_n[agent_id])],

@@ -14,8 +14,7 @@ print(sys.path)
 
 import numpy as np
 import math
-from gen_smarts_demos import observation_transform, calculate_actions, \
-    split_train_test
+from gen_smarts_demos import observation_transform, calculate_actions, split_train_test
 
 from rlkit.data_management.path_builder import PathBuilder
 from rlkit.launchers.launcher_util import set_seed
@@ -28,6 +27,7 @@ from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.common import _legalize_angle
 
 lane_change_stats = defaultdict(int)
+
 
 def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
     done_vehicle_num = 0
@@ -117,11 +117,13 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
                 if cutin_demo_traj is not None:
                     cutin_demo_trajs.append(cutin_demo_traj)
                     total_cutin_steps += cutin_steps
-                print(f"Agent-{vehicle} Ended, total {done_vehicle_num} Ended. "
-                      f"Cutin Demo Trajs: {len(cutin_demo_trajs)}, "
-                      f"curr steps: {cutin_steps}, "
-                      f"Total cutin steps: {total_cutin_steps}",
-                      f"curr_stats: {lane_change_stats}")
+                print(
+                    f"Agent-{vehicle} Ended, total {done_vehicle_num} Ended. "
+                    f"Cutin Demo Trajs: {len(cutin_demo_trajs)}, "
+                    f"curr steps: {cutin_steps}, "
+                    f"Total cutin steps: {total_cutin_steps}",
+                    f"curr_stats: {lane_change_stats}",
+                )
 
         """ Store data in the corresponding path builder. """
         vehicles = next_observations.keys()

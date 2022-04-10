@@ -38,8 +38,9 @@ def get_generic_path_information(paths, env, stat_prefix=""):
             distance = 0
             for i in range(1, len(path[a_id]["env_infos"])):
                 distance += np.linalg.norm(
-                    path[a_id]["env_infos"][i]["raw_position"][:2] -
-                    path[a_id]["env_infos"][i-1]["raw_position"][:2])
+                    path[a_id]["env_infos"][i]["raw_position"][:2]
+                    - path[a_id]["env_infos"][i - 1]["raw_position"][:2]
+                )
             distance_travelled.append(distance)
         distance_travelled_n[a_id] = distance_travelled
 
