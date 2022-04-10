@@ -1,7 +1,19 @@
-smarts_i80:
-  description: "SMARTS, NGSIM, I80"
+smarts_i80_radius_stack_4:
+  description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
   file_paths: [
-    ./demos/ngsim/smarts_ngsim_stack-1_LANE.pkl
+    ./demos/ngsim/smarts_NGSIM-I80_radius_stack-4.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ngsim/train_ids.pkl
+  ]
+
+smarts_i80_lane_stack_4:
+  description: "SMARTS, NGSIM, I80, LANE OBS"
+  file_paths: [
+    ./demos/ngsim/smarts_NGSIM-I80_lane_stack-4.pkl
   ]
   eval_split: [
     ./demos/ngsim/test_ids.pkl

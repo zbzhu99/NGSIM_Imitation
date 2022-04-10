@@ -1,7 +1,7 @@
 meta_data:
-  script_path: run_scripts/gen_smarts_demos.py
-  exp_name: gen_smarts_demos_ngsim
-  description: Generate demonstrations for imitation learning algorithms
+  script_path: run_scripts/gen_smarts_cutin_demos.py
+  exp_name: gen_smarts_cutin_demos_ngsim
+  description: Generate cutin demonstrations for imitation learning algorithms
   num_workers: 1
   using_gpus: true
 # -----------------------------------------------------------------------------
@@ -12,10 +12,12 @@ constants:
 
   seed: 0
   test_ratio: 0.15
-  neighbor_mode: "LANE"
 
   env_specs:
     env_creator: "smarts"
     scenario_name: "NGSIM-I80"
     env_kwargs:
-      obs_stack_size: 1
+      use_rnn: false
+      closest_neighbor_num: 8
+      obs_stack_size: 4
+      feature_type: "radius"

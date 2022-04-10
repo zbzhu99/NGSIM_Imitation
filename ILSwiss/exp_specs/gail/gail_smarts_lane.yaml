@@ -1,20 +1,20 @@
 meta_data:
   script_path: run_scripts/adv_irl_exp_script.py
-  exp_name: gailfo_smarts_ngsim
+  exp_name: gail_smarts_ngsim
   description: Train an adversarial IRL model
-  num_workers: 1  # parallel processes to run variants
+  num_workers: 12 # 64
   using_gpus: true
 # -----------------------------------------------------------------------------
 variables:
   adv_irl_params:
-    grad_pen_weight: [4.0]
+    grad_pen_weight: [4.0] # [0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
   sac_params:
-    reward_scale: [2.0]
+    reward_scale: [2.0] # [0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
   seed: [0]
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_i80'
+  expert_name: 'smarts_i80_lane_stack_4'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
@@ -30,12 +30,12 @@ constants:
 
   adv_irl_params:
     mode: 'gail'
-    state_only: true
+    state_only: false
 
-    num_epochs: 162
+    num_epochs: 100
     num_steps_per_epoch: 500000
     num_steps_between_train_calls: 1000
-    max_path_length: 1500
+    max_path_length: 1000
     min_steps_before_training: 5000
 
     eval_deterministic: true
@@ -78,7 +78,10 @@ constants:
     env_creator: "smarts"
     scenario_name: "NGSIM-I80"
     env_kwargs:
-      neighbor_mode: "LANE"
+      use_rnn: false
+      closest_neighbor_num: 6
+      obs_stack_size: 4
+      feature_type: "lane"
     training_env_specs:
       env_num: 20
       wait_num: 10

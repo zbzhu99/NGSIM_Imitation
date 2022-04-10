@@ -21,66 +21,56 @@ obs_adapter = get_observation_adapter(
 )
 
 """
+
 import math
 import gym
 import cv2
 import numpy as np
 
-from collections import namedtuple
-
 from smarts.core.sensors import Observation
-from smarts.core.utils.math import vec_2d
+from smarts.core.utils.math import vec_2d, vec_to_radians, radians_to_vec
 
 
-Config = namedtuple(
-    "Config", "name, agent, interface, policy, learning, other, trainer"
-)
-FeatureMetaInfo = namedtuple("FeatureMetaInfo", "space, data")
-
-
-SPACE_LIB = dict(
-    distance_to_center=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    heading_errors=lambda shape: gym.spaces.Box(low=-1.0, high=1.0, shape=shape),
-    speed=lambda shape: gym.spaces.Box(low=-330.0, high=330.0, shape=shape),
-    steering=lambda shape: gym.spaces.Box(low=-1.0, high=1.0, shape=shape),
-    neighbor=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    neighbor_with_lanes=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    ego_pos=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    heading=lambda shape: gym.spaces.Box(low=-1e3, high=1e3, shape=shape),
-    # ego_lane_dist_and_speed=lambda shape: gym.spaces.Box(
-    #     low=-1e2, high=1e2, shape=shape
-    # ),
-    img_gray=lambda shape: gym.spaces.Box(low=0.0, high=1.0, shape=shape),
-    neighbor_dict=lambda shape: gym.spaces.Dict(),
-)
-
-
-def _cal_angle(vec):
-
-    if vec[1] < 0:
-        base_angle = math.pi
-        base_vec = np.array([-1.0, 0.0])
-    else:
-        base_angle = 0.0
-        base_vec = np.array([1.0, 0.0])
-
-    cos = vec.dot(base_vec) / np.sqrt(vec.dot(vec) * base_vec.dot(base_vec))
-    angle = math.acos(cos)
-    return angle + base_angle
+def _legalize_angle(angle):
+    """Return the angle within range [0, 2pi)"""
+    return angle % (2 * math.pi)
 
 
 def _get_closest_vehicles(ego, neighbor_vehicles, n):
-    """将周角分成n个区域，获取每个区域最近的车辆"""
+    """将周角分成n个区域, 获取每个区域最近的车辆"""
     ego_pos = ego.position[:2]
     groups = {i: (None, 1e10) for i in range(n)}
     partition_size = math.pi * 2.0 / n
     # get partition
     for v in neighbor_vehicles:
         v_pos = v.position[:2]
-        rel_pos_vec = np.asarray([v_pos[0] - ego_pos[0], v_pos[1] - ego_pos[1]])
+        rel_pos_vec = np.array([v_pos[0] - ego_pos[0], v_pos[1] - ego_pos[1]])
         # calculate its partitions
-        angle = _cal_angle(rel_pos_vec)
+        angle = vec_to_radians(rel_pos_vec)
         i = int(angle / partition_size)
+        dist = np.sqrt(rel_pos_vec.dot(rel_pos_vec))
+        if dist < groups[i][1]:
+            groups[i] = (v, dist)
+
+    return groups
+
+
+def _get_closest_vehicles_with_ego_coordinate(ego, neighbor_vehicles, n):
+    """将周角分成n个区域, 获取每个区域最近的车辆"""
+    ego_pos = ego.position[:2]
+
+    groups = {i: (None, float("inf")) for i in range(n)}
+    partition_size = math.pi * 2.0 / n
+    # get partition
+    for v in neighbor_vehicles:
+        v_pos = v.position[:2]
+        rel_pos_vec = np.array([v_pos[0] - ego_pos[0], v_pos[1] - ego_pos[1]])
+        # calculate its partitions
+        angle = vec_to_radians(rel_pos_vec)
+        rel_angle = angle - ego.heading
+        rel_angle = _legalize_angle(rel_angle)
+        rel_angle = _legalize_angle(rel_angle + partition_size / 2.0)
+        i = int(rel_angle / partition_size)
         dist = np.sqrt(rel_pos_vec.dot(rel_pos_vec))
         if dist < groups[i][1]:
             groups[i] = (v, dist)
@@ -94,6 +84,35 @@ def _get_relative_position(ego, neighbor_vehicle, relative_lane):
 
 
 class CalObs:
+    @staticmethod
+    def get_feature_space(feature_name, **kwargs):
+        if not hasattr(CalObs, "_spaces"):
+            CalObs._spaces = dict(
+                ego_dynamics=gym.spaces.Box(low=-330, high=330, shape=(1,)),
+                ego_pos=gym.spaces.Box(low=-1e3, high=1e3, shape=(2,)),
+                heading=gym.spaces.Box(low=-1e3, high=1e3, shape=(1,)),
+                distance_to_center=gym.spaces.Box(low=-1e3, high=1e3, shape=(1,)),
+                heading_errors=gym.spaces.Box(low=-1.0, high=1.0, shape=(3,)),
+                speed=gym.spaces.Box(low=-330.0, high=330.0, shape=(1,)),
+                steering=gym.spaces.Box(low=-1.0, high=1.0, shape=(1,)),
+                neighbor_with_radius=gym.spaces.Box(
+                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
+                ),
+                neighbor_with_radius_ego_coordinate=gym.spaces.Box(
+                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num"),)
+                ),
+                neighbor_with_lanes=gym.spaces.Box(
+                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
+                ),
+            )
+        return CalObs._spaces[feature_name]
+
+    @staticmethod
+    def cal_ego_dynamics(env_obs: Observation, **kwargs):
+        ego = env_obs.ego_vehicle_state
+        ego_dynamics = np.array([float(ego.speed)], dtype="float64").reshape((-1,))
+        return ego_dynamics
+
     @staticmethod
     def cal_ego_pos(env_obs: Observation, **kwargs):
         return env_obs.ego_vehicle_state.position[:2]
@@ -122,7 +141,8 @@ class CalObs:
 
     @staticmethod
     def cal_heading_errors(env_obs: Observation, **kwargs):
-        look_ahead = kwargs["look_ahead"]
+        # look_ahead = kwargs["look_ahead"]
+        look_ahead = 3
         ego = env_obs.ego_vehicle_state
         waypoint_paths = env_obs.waypoint_paths
         wps = [path[0] for path in waypoint_paths]
@@ -178,6 +198,26 @@ class CalObs:
             features[i, :] = np.asarray([pos[0], pos[1], heading, speed])
 
         return features.reshape((-1,))
+
+    @staticmethod
+    def cal_neighbor_with_radius_ego_coordinate(env_obs: Observation, **kwargs):
+        ego = env_obs.ego_vehicle_state
+        neighbor_vehicle_states = env_obs.neighborhood_vehicle_states
+        closest_neighbor_num = kwargs.get("closest_neighbor_num", 8)
+        # dist, speed, ttc, pos
+        features = np.zeros((closest_neighbor_num,), dtype="float64")
+        # get the closest vehicles according to the ego coordinate system
+        surrounding_vehicles = _get_closest_vehicles_with_ego_coordinate(
+            ego, neighbor_vehicle_states, n=closest_neighbor_num
+        )
+        for i, v in surrounding_vehicles.items():
+            if v[0] is None:
+                dist = 15.0
+            else:
+                dist = min(v[1], 15.0)
+            features[i] = dist
+
+        return features
 
     @staticmethod
     def cal_neighbor_with_lanes(env_obs: Observation, **kwargs):
@@ -281,12 +321,7 @@ class CalObs:
             # relative_speed_m_per_s = (ego.speed - v.speed) * 1000 / 3600
             # relative_speed_m_per_s = max(abs(relative_speed_m_per_s), 1e-5)
             dist_wp_vehicle_vector = vec_2d(v.position) - vec_2d(nearest_wp.pos)
-            direction_vector = np.array(
-                [
-                    math.cos(math.radians(nearest_wp.heading)),
-                    math.sin(math.radians(nearest_wp.heading)),
-                ]
-            ).dot(dist_wp_vehicle_vector)
+            direction_vector = radians_to_vec.dot(dist_wp_vehicle_vector)
 
             dist_to_vehicle = lane_dist + np.sign(direction_vector) * (
                 np.linalg.norm(vec_2d(nearest_wp.pos) - vec_2d(v.position))
@@ -383,13 +418,10 @@ def _cal_obs(env_obs: Observation, space, **kwargs):
     return obs
 
 
-def subscribe_features(**kwargs):
+def subscribe_features(feature_list, **kwargs):
     res = dict()
-
-    for k, config in kwargs.items():
-        if bool(config):
-            res[k] = SPACE_LIB[k](config)
-
+    for feature_name in feature_list:
+        res[feature_name] = CalObs.get_feature_space(feature_name, **kwargs)
     return res
 
 

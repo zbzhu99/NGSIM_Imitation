@@ -1,6 +1,6 @@
 import abc
 import time
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import Dict, List
 
 import gtimer as gt
@@ -355,16 +355,22 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         :return:
         """
         actions_n = [{} for _ in range(len(observations_n))]
-        for idx, observation_n in enumerate(observations_n):
-            for agent_id in observation_n.keys():
+        policy_obs_list_n = defaultdict(list)  # to recover the corresponding actions
+        policy_to_env_agent_id = defaultdict(list)
+        for idx, observation_n in enumerate(observations_n):  # for each env
+            for agent_id in observation_n.keys():  # for each agent in single env.
                 policy_id = self.policy_mapping_dict[agent_id]
                 self.exploration_policy_n[policy_id].set_num_steps_total(
                     self._n_env_steps_total
                 )
-                # OPTIMIZE(zbzhu): can stack all data with same agent_id together and compute once
-                actions_n[idx][agent_id] = self.exploration_policy_n[
-                    policy_id
-                ].get_action(observation_n[agent_id])
+                policy_obs_list_n[policy_id].append(observation_n[agent_id])
+                policy_to_env_agent_id[policy_id].append((idx, agent_id))
+        for policy_id in policy_obs_list_n:
+            stacked_obs = np.stack(policy_obs_list_n[policy_id])
+            actions = self.exploration_policy_n[policy_id].get_actions(stacked_obs)
+            for i in range(actions.shape[0]):
+                idx, agent_id = policy_to_env_agent_id[policy_id][i]
+                actions_n[idx][agent_id] = actions[i]
         return actions_n
 
     def _start_epoch(self, epoch):

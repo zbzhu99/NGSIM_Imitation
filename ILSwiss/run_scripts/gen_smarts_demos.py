@@ -13,6 +13,8 @@ sys.path.insert(0, parentdir)
 print(sys.path)
 
 import numpy as np
+import time
+from copy import deepcopy
 
 from rlkit.data_management.path_builder import PathBuilder
 from rlkit.launchers.launcher_util import set_seed
@@ -20,6 +22,8 @@ from rlkit.launchers.launcher_util import set_seed
 from smarts.core.smarts import SMARTS
 from smarts.core.scenario import Scenario
 from smarts.core.utils.math import radians_to_vec
+
+from smarts_imitation.utils.feature_group import FeatureGroup
 from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 
@@ -42,39 +46,36 @@ def split_train_test(scenarios, test_ratio):
 
 def convert_single_obs(single_observation, observation_adapter):
     observation = observation_adapter(single_observation)
-    ego_state = []
-    other_info = []
+    all_states = []
     for feat in observation:
-        if feat in ["ego_pos", "speed", "heading"]:
-            ego_state.append(observation[feat])
-        else:
-            other_info.append(observation[feat])
-    ego_state = np.concatenate(ego_state, axis=-1).reshape(-1)
-    other_info = np.concatenate(other_info, axis=-1).reshape(-1)
-    full_obs = np.concatenate((ego_state, other_info))
+        all_states.append(observation[feat])
+    full_obs = np.concatenate(all_states, axis=-1).reshape(-1)
     return full_obs
 
 
 def observation_transform(
-    raw_observations, observation_adapter, obs_queues, obs_stack_size
+    raw_observations, observation_adapter, obs_queues, obs_stack_size, use_rnn
 ):
     observations = {}
     for vehicle_id in raw_observations.keys():
         if obs_stack_size > 1:
+            converted_single_obs = convert_single_obs(
+                raw_observations[vehicle_id], observation_adapter
+            )
             if vehicle_id not in obs_queues.keys():
                 obs_queues[vehicle_id] = deque(maxlen=obs_stack_size)
                 obs_queues[vehicle_id].extend(
-                    [raw_observations[vehicle_id] for _ in range(obs_stack_size)]
+                    [deepcopy(converted_single_obs) for _ in range(obs_stack_size)]
                 )
             else:
-                obs_queues[vehicle_id].append(raw_observations[vehicle_id])
-            observations[vehicle_id] = np.concatenate(
-                [
-                    convert_single_obs(obs, observation_adapter)
-                    for obs in list(obs_queues[vehicle_id])
-                ],
-                axis=-1,
-            )
+                obs_queues[vehicle_id].append(converted_single_obs)
+            if not use_rnn:
+                observations[vehicle_id] = np.concatenate(
+                    list(obs_queues[vehicle_id]),
+                    axis=-1,
+                )
+            else:
+                observations[vehicle_id] = np.stack(list(obs_queues[vehicle_id]))
         else:
             observations[vehicle_id] = convert_single_obs(
                 raw_observations[vehicle_id], observation_adapter
@@ -96,9 +97,18 @@ def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
     return actions
 
 
-def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode="LANE"):
-    agent_spec = agent.get_agent_spec()
-    observation_adapter = adapter.get_observation_adapter(neighbor_mode=neighbor_mode)
+def sample_demos(
+    train_vehicle_ids,
+    scenarios,
+    obs_stack_size,
+    feature_list,
+    closest_neighbor_num,
+    use_rnn,
+):
+    agent_spec = agent.get_agent_spec(feature_list, closest_neighbor_num)
+    observation_adapter = adapter.get_observation_adapter(
+        feature_list, closest_neighbor_num
+    )
 
     smarts = SMARTS(
         agent_interfaces={},
@@ -128,7 +138,7 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode="LA
         smarts.vehicle_index.social_vehicle_ids()
     )
     observations = observation_transform(
-        raw_observations, observation_adapter, obs_queues, obs_stack_size
+        raw_observations, observation_adapter, obs_queues, obs_stack_size, use_rnn
     )
 
     while True:
@@ -149,7 +159,11 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode="LA
             smarts.vehicle_index.social_vehicle_ids()
         )
         next_observations = observation_transform(
-            raw_next_observations, observation_adapter, obs_queues, obs_stack_size
+            raw_next_observations,
+            observation_adapter,
+            obs_queues,
+            obs_stack_size,
+            use_rnn,
         )
         actions = calculate_actions(raw_observations, raw_next_observations)
 
@@ -159,7 +173,7 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode="LA
                 cur_path_builder = path_builders["Agent-" + vehicle]
                 cur_path_builder["agent_0"]["terminals"][-1] = True
                 demo_trajs.append(cur_path_builder)
-                print(f"Agent-{vehicle} Ended")
+                print(f"Agent-{vehicle} Ended, total {len(demo_trajs)} Ended.")
 
         """ Store data in the corresponding path builder. """
         vehicles = next_observations.keys()
@@ -184,7 +198,7 @@ def sample_demos(train_vehicle_ids, scenarios, obs_stack_size, neighbor_mode="LA
 
 
 def experiment(specs):
-
+    time_start = time.time()
     save_path = Path("./demos/ngsim")
     os.makedirs(save_path, exist_ok=True)
 
@@ -218,7 +232,9 @@ def experiment(specs):
         train_vehicle_ids,
         ScenarioZoo.get_scenario("NGSIM-I80"),
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-        neighbor_mode=specs["neighbor_mode"],
+        feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
+        closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
+        use_rnn=specs["env_specs"]["env_kwargs"]["use_rnn"],
     )
 
     print(
@@ -229,16 +245,17 @@ def experiment(specs):
 
     with open(
         Path(save_path).joinpath(
-            "smarts_{}_stack-{}_{}.pkl".format(
+            "smarts_{}_{}_stack-{}.pkl".format(
                 exp_specs["env_specs"]["scenario_name"],
+                exp_specs["env_specs"]["env_kwargs"]["feature_type"],
                 exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-                exp_specs["neighbor_mode"],
             ),
         ),
         "wb",
     ) as f:
         pickle.dump(demo_trajs, f)
-
+    total_time = time.time() - time_start
+    print("total time: {:2f}s".format(total_time))
     return 1
 
 
