@@ -25,6 +25,7 @@ from smarts.core.utils.math import vec_to_radians
 from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.common import _legalize_angle
+from smarts_imitation.utils.feature_group import FeatureGroup
 
 lane_change_stats = defaultdict(int)
 
@@ -32,11 +33,11 @@ lane_change_stats = defaultdict(int)
 def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
     done_vehicle_num = 0
     agent_spec = agent.get_agent_spec(
-        specs["env_specs"]["env_kwargs"]["feature_list"],
+        feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
         specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
     )
     observation_adapter = adapter.get_observation_adapter(
-        feature_list=specs["env_specs"]["env_kwargs"]["feature_list"],
+        feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
         closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
     )
 
@@ -273,8 +274,9 @@ def experiment(specs):
     )
 
     file_save_path = Path(save_path).joinpath(
-        "smarts_{}_stack-{}_cutin.pkl".format(
+        "smarts_{}_{}_stack-{}_cutin.pkl".format(
             exp_specs["env_specs"]["scenario_name"],
+            exp_specs["env_specs"]["env_kwargs"]["feature_type"],
             exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
         )
     )
