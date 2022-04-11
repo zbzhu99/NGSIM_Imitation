@@ -36,7 +36,7 @@ pip install -r requirements.txt
    pip install -e .[camera-obs]
    ```
 
-4. Download the NGSIM I-80 dataset from: https://drive.google.com/file/d/14j5S8lGir9J5QAl8AHMamDu3WTDQAQc3/view?usp=sharing, and place it under `smarts-imitation/ngsim`
+4. Download the NGSIM dataset from: https://drive.google.com/file/d/1n0kvbS1psscTgYgQvTB6NZNTvZ4hSbzU/view?usp=sharing, and place it under `smarts-imitation/`
 
 5. Install the ngsim wrapper for smarts with
 

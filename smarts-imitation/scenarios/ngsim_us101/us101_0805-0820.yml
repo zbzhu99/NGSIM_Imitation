@@ -1,11 +1,11 @@
 trajectory_dataset:
-    name: us101_0750-0805
+    name: us101_0805-0820
     source: NGSIM
 
     # Specify absolute or relative path to where dataset resides on your filesystem
     # For example, you could use:
     # input_path: ./trajectories-0400-0415.txt
-    input_path: <PATH TO FILE GOES HERE>
+    input_path: ../../xy-trajectories/us101/trajectories-0805am-0820am.txt
 
     # Used by SMARTS for the initial speed of new agents being added to dataset.
     # 55mph is roughly 25m/s.  100km/h is roughly 28m/s.
@@ -40,4 +40,3 @@ trajectory_dataset:
         # (So use `real_lane_width_m` here for 1:1 scale - the default.)
         # It's also used in SMARTS for detecting off-road, etc.
         #lane_width: 3.7
-

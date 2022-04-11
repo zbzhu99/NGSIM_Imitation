@@ -5,7 +5,7 @@ trajectory_dataset:
     # Specify absolute or relative path to where dataset resides on your filesystem
     # For example, you could use:
     # input_path: ./trajectories-0400-0415.txt
-    input_path: <PATH TO FILE GOES HERE>
+    input_path: ../../xy-trajectories/us101/trajectories-0820am-0835am.txt
 
     # Used by SMARTS for the initial speed of new agents being added to dataset.
     # 55mph is roughly 25m/s.  100km/h is roughly 28m/s.
