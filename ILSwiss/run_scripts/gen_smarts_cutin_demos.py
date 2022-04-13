@@ -5,7 +5,6 @@ import sys
 import pickle
 import inspect
 from pathlib import Path
-from collections import defaultdict
 from multiprocessing import Process, Queue
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))

@@ -25,6 +25,7 @@ from rlkit.torch.algorithms.sac.sac_alpha import SoftActorCritic
 from rlkit.torch.algorithms.adv_irl.disc_models.simple_disc_models import MLPDisc
 from rlkit.torch.algorithms.adv_irl.adv_irl import AdvIRL
 from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv, EPS
+from smarts_imitation.env_split import split_vehicle_ids
 
 
 def experiment(variant):
@@ -53,8 +54,18 @@ def experiment(variant):
     if variant["traj_num"] > 0:
         traj_list = random.sample(traj_list, variant["traj_num"])
 
+    train_split_path = listings[variant["expert_name"]]["train_split"][0]
+    with open(train_split_path, "rb") as f:
+        # train_vehicle_ids is a OrderedDcit
+        train_vehicle_ids = pickle.load(f)
+
+    eval_split_path = listings[variant["expert_name"]]["eval_split"][0]
+    with open(eval_split_path, "rb") as f:
+        # eval_vehicle_ids is a OrderedDict
+        eval_vehicle_ids = pickle.load(f)
+
     env_specs = variant["env_specs"]
-    env = get_env(env_specs, traffic_name="i80_0400-0415")
+    env = get_env(env_specs, traffic_name=list(eval_vehicle_ids.keys())[0])
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}".format(env_specs["env_creator"]))
@@ -193,79 +204,45 @@ def experiment(variant):
         )
     )
 
-    train_split_path = listings[variant["expert_name"]]["train_split"][0]
-    with open(train_split_path, "rb") as f:
-        # train_vehicle_ids is a OrderedDcit
-        train_vehicle_ids = pickle.load(f)
-
-    train_vehicle_ids_list_mapping = OrderedDict()
-    total_train_trajs_num = sum([len(x) for x in train_vehicle_ids.values()])
-    real_train_env_num = 0
-    for (
-        traffic_name,
-        vehicle_ids,
-    ) in train_vehicle_ids.items():  # keep traffic name to be ordered.
-        traffic_env_num = int(
-            env_specs["training_env_specs"]["env_num"]
-            * len(vehicle_ids)
-            / total_train_trajs_num
-            + 0.5
-        )
-        real_train_env_num += traffic_env_num
-        train_vehicle_ids_list_mapping[traffic_name] = np.array_split(
-            vehicle_ids, traffic_env_num
-        )
-        print(
-            f"Training traffic: {traffic_name}, env_num: {traffic_env_num}, "
-            f"vehicle num for each env: {len(train_vehicle_ids_list_mapping[traffic_name][0])}"
-        )
-    env_specs["training_env_specs"]["env_num"] = real_train_env_num
-    env_specs["training_env_specs"]["wait_num"] = min(
-        real_train_env_num, env_specs["training_env_specs"]["wait_num"]
+    train_splitted_vehicle_ids, train_real_env_num = split_vehicle_ids(
+        train_vehicle_ids, env_specs["training_env_specs"]["env_num"]
     )
-
+    train_env_nums = {
+        traffic_name: len(ids_list)
+        for traffic_name, ids_list in train_splitted_vehicle_ids.items()
+    }
+    print("training env nums: {}".format(train_env_nums))
+    env_specs["training_env_specs"]["env_num"] = train_real_env_num
+    env_specs["training_env_specs"]["wait_num"] = min(
+        train_real_env_num, env_specs["training_env_specs"]["wait_num"]
+    )
     training_env = get_envs(
         env_specs,
         env_wrapper,
-        vehicle_ids_list_mapping=train_vehicle_ids_list_mapping,
+        splitted_vehicle_ids=train_splitted_vehicle_ids,
         **env_specs["training_env_specs"],
     )
 
-    eval_split_path = listings[variant["expert_name"]]["eval_split"][0]
-    with open(eval_split_path, "rb") as f:
-        # eval_vehicle_ids is a OrderedDict
-        eval_vehicle_ids = pickle.load(f)
-    eval_vehicle_ids_list_mapping = OrderedDict()
-    total_train_trajs_num = sum([len(x) for x in eval_vehicle_ids.values()])
-    real_eval_env_num = 0
-    for traffic_name, vehicle_ids in eval_vehicle_ids.items():
-        traffic_env_num = int(
-            env_specs["eval_env_specs"]["env_num"]
-            * len(vehicle_ids)
-            / total_train_trajs_num
-            + 0.5
-        )
-        real_eval_env_num += traffic_env_num
-        eval_vehicle_ids_list_mapping[traffic_name] = np.array_split(
-            vehicle_ids, traffic_env_num
-        )
-        print(
-            f"Evaluation traffic: {traffic_name}, env_num: {traffic_env_num}, "
-            f"vehicle num for each env: {len(eval_vehicle_ids_list_mapping[traffic_name][0])}"
-        )
-
-    env_specs["eval_env_specs"]["env_num"] = real_eval_env_num
+    eval_splitted_vehicle_ids, eval_real_env_num = split_vehicle_ids(
+        eval_vehicle_ids, env_specs["eval_env_specs"]["env_num"]
+    )
+    eval_env_nums = {
+        traffic_name: len(ids_list)
+        for traffic_name, ids_list in eval_splitted_vehicle_ids.items()
+    }
+    print("eval env nums: {}".format(eval_env_nums))
+    env_specs["eval_env_specs"]["env_num"] = eval_real_env_num
     env_specs["eval_env_specs"]["wait_num"] = min(
-        real_eval_env_num, env_specs["eval_env_specs"]["wait_num"]
+        eval_real_env_num, env_specs["eval_env_specs"]["wait_num"]
     )
     eval_env = get_envs(
         env_specs,
         env_wrapper,
-        vehicle_ids_list_mapping=eval_vehicle_ids_list_mapping,
+        splitted_vehicle_ids=eval_splitted_vehicle_ids,
         **env_specs["eval_env_specs"],
     )
     eval_car_num = []
-    for traffic_name, vehicle_ids_lists in eval_vehicle_ids_list_mapping.items():
+    for vehicle_ids_lists in eval_splitted_vehicle_ids.values():
         # should be ordered.
         eval_car_num.extend([len(x) for x in vehicle_ids_lists])
 

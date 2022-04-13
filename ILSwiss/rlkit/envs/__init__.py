@@ -29,7 +29,7 @@ def get_env(env_specs, traffic_name, vehicle_ids=None):
 def get_envs(
     env_specs,
     env_wrapper=None,
-    vehicle_ids_list_mapping: dict = {},
+    splitted_vehicle_ids: dict = {},
     env_num=1,
     wait_num=None,
     auto_reset=False,
@@ -43,7 +43,7 @@ def get_envs(
         env_kwargs: {} # kwargs to pass to the env constructor call
         vehicle_ids_list: {traffic_name: [[vehicle_ids],...]}
     """
-    assert env_num == sum([len(x) for x in vehicle_ids_list_mapping.values()])
+    assert env_num == sum([len(x) for x in splitted_vehicle_ids.values()])
     if env_wrapper is None:
         env_wrapper = ProxyEnv
 
@@ -53,7 +53,7 @@ def get_envs(
         print("Unknown env name: {}".format(env_specs["env_creator"]))
 
     env_fns = []
-    for traffic_name, traffic_vehicle_ids_lists in vehicle_ids_list_mapping.items():
+    for traffic_name, traffic_vehicle_ids_lists in splitted_vehicle_ids.items():
         for traffic_vehicle_ids_list in traffic_vehicle_ids_lists:
             env_fns.append(
                 lambda ids=traffic_vehicle_ids_list, name=traffic_name: env_wrapper(
