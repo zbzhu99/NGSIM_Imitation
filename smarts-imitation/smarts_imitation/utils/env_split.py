@@ -17,11 +17,13 @@ def split_vehicle_ids(vehicle_ids, env_num):
     real_env_num = 0
     for (
         traffic_name,
-        vehicle_ids,
+        traffic_vehicle_ids,
     ) in vehicle_ids.items():  # keep traffic name to be ordered.
-        traffic_env_num = int(env_num * len(vehicle_ids) / total_vehicle_num + 0.5)
+        traffic_env_num = int(
+            env_num * len(traffic_vehicle_ids) / total_vehicle_num + 0.5
+        )
         real_env_num += traffic_env_num
         splitted_vehicle_ids[traffic_name] = np.array_split(
-            vehicle_ids, traffic_env_num
+            traffic_vehicle_ids, traffic_env_num
         )
     return splitted_vehicle_ids, real_env_num
