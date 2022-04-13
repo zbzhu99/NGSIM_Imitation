@@ -6,6 +6,7 @@ import pickle
 import inspect
 from pathlib import Path
 from collections import defaultdict
+from multiprocessing import Process, Queue
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -27,41 +28,48 @@ from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.common import _legalize_angle
 from smarts_imitation.utils.feature_group import FeatureGroup
 
-lane_change_stats = defaultdict(int)
 
+def work_process(
+    cutin_trajs_queue,
+    train_vehicle_ids,
+    scenario,
+    obs_stack_size,
+    feature_list,
+    closest_neighbor_num,
+    use_rnn,
+    angle_threshold,
+    cutin_dist_threshold,
+    steps_before_cutin,
+    steps_after_cutin,
+):
+    traffic_name = scenario._traffic_history.name
 
-def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
     done_vehicle_num = 0
     agent_spec = agent.get_agent_spec(
-        feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
-        specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
+        feature_list=feature_list,
+        closest_neighbor_num=closest_neighbor_num,
     )
     observation_adapter = adapter.get_observation_adapter(
-        feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
-        closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
+        feature_list=feature_list,
+        closest_neighbor_num=closest_neighbor_num,
     )
 
     smarts = SMARTS(
         agent_interfaces={},
         traffic_sim=None,
     )
-    scenarios_iterator = Scenario.scenario_variations(
-        [scenarios],
-        list([]),
-    )
 
     prev_vehicles = set()
     all_original_paths = {}
-    cutin_demo_trajs = []
-    total_cutin_steps = 0
+    traffic_cutin_steps = 0
 
-    if specs["env_specs"]["env_kwargs"]["obs_stack_size"] > 1:
+    if obs_stack_size > 1:
         obs_queues = {}
     else:
         obs_queues = None
 
     """ Reset environment. """
-    smarts.reset(next(scenarios_iterator))
+    smarts.reset(scenario)
     smarts.step({})
     smarts.attach_sensors_to_vehicles(
         agent_spec.interface, smarts.vehicle_index.social_vehicle_ids()
@@ -74,8 +82,8 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
         raw_observations,
         observation_adapter,
         obs_queues,
-        specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-        specs["env_specs"]["env_kwargs"]["use_rnn"],
+        obs_stack_size,
+        use_rnn,
     )
 
     while True:
@@ -99,8 +107,8 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
             raw_next_observations,
             observation_adapter,
             obs_queues,
-            specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-            specs["env_specs"]["env_kwargs"]["use_rnn"],
+            obs_stack_size,
+            use_rnn,
         )
         actions = calculate_actions(raw_observations, raw_next_observations)
 
@@ -113,17 +121,19 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
 
                 original_path = all_original_paths.pop(vehicle_name)
                 cutin_demo_traj, cutin_steps = get_single_cutin_demo(
-                    original_path, specs
+                    original_path,
+                    angle_threshold,
+                    cutin_dist_threshold,
+                    steps_before_cutin,
+                    steps_after_cutin,
                 )
                 if cutin_demo_traj is not None:
-                    cutin_demo_trajs.append(cutin_demo_traj)
-                    total_cutin_steps += cutin_steps
+                    cutin_trajs_queue.put(cutin_demo_traj)
+                    traffic_cutin_steps += cutin_steps
                 print(
-                    f"Agent-{vehicle} Ended, total {done_vehicle_num} Ended. "
-                    f"Cutin Demo Trajs: {len(cutin_demo_trajs)}, "
-                    f"curr steps: {cutin_steps}, "
-                    f"Total cutin steps: {total_cutin_steps}",
-                    f"curr_stats: {lane_change_stats}",
+                    f"Traffic: {traffic_name}: Agent-{vehicle} Ended, "
+                    f"total {done_vehicle_num} Ended. "
+                    f"cutin steps: {traffic_cutin_steps}",
                 )
 
         """ Store data in the corresponding path builder. """
@@ -148,6 +158,65 @@ def sample_cutin_demos(train_vehicle_ids, scenarios, specs):
 
         raw_observations = raw_next_observations
         observations = next_observations
+
+
+def sample_cutin_demos(
+    train_vehicle_ids,
+    scenarios,
+    obs_stack_size,
+    feature_list,
+    closest_neighbor_num,
+    use_rnn,
+    angle_threshold,
+    cutin_dist_threshold,
+    steps_before_cutin,
+    steps_after_cutin,
+):
+    scenario_iterator = Scenario.scenario_variations(
+        [scenarios], list([]), shuffle_scenarios=False, circular=False
+    )  # scenarios with different traffic histories.
+
+    worker_processes = []
+    trajs_queue = Queue()  # Queues are process safe.
+    for scenario in scenario_iterator:
+        traffic_name = scenario._traffic_history.name
+        if traffic_name not in train_vehicle_ids:
+            continue
+        p = Process(
+            target=work_process,
+            args=(
+                trajs_queue,
+                train_vehicle_ids[traffic_name],
+                scenario,
+                obs_stack_size,
+                feature_list,
+                closest_neighbor_num,
+                use_rnn,
+                angle_threshold,
+                cutin_dist_threshold,
+                steps_before_cutin,
+                steps_after_cutin,
+            ),
+            daemon=True,
+        )
+        print(f"Traffic {traffic_name} start sampling.")
+        p.start()
+        worker_processes.append(p)
+
+    # Don not call p.join().
+    cutin_demo_trajs = []
+    while True:  # not reliable
+        try:
+            if len(cutin_demo_trajs) == 0:
+                traj = trajs_queue.get(block=True)
+            else:
+                traj = trajs_queue.get(block=True, timeout=300)
+            cutin_demo_trajs.append(traj)
+            print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}")
+        except:
+            print("Queue empty! stop collecting.")
+            break
+    print(f"Append to buffer finished! total {len(cutin_demo_trajs)} trajectories!")
 
     return cutin_demo_trajs
 
@@ -178,8 +247,7 @@ def _is_lane_change_valid(raw_observations, angle_threshold, cutin_dist_threshol
     return False
 
 
-def _lane_change_steps(original_path, specs):
-    global lane_change_stats
+def _lane_change_steps(original_path, angle_threshold, cutin_dist_threshold):
     lane_change_steps = []
     for i in range(len(original_path)):
         cur_lane = original_path[i]["raw_observations"].ego_vehicle_state.lane_index
@@ -189,11 +257,10 @@ def _lane_change_steps(original_path, specs):
         if next_lane != cur_lane:
             if _is_lane_change_valid(
                 original_path[i]["raw_next_observations"],
-                specs["env_specs"]["env_kwargs"]["angle_threshold"],
-                specs["env_specs"]["env_kwargs"]["cutin_dist_threshold"],
+                angle_threshold,
+                cutin_dist_threshold,
             ):
                 lane_change_steps.append(i)
-                lane_change_stats[(cur_lane, next_lane)] += 1
     return lane_change_steps
 
 
@@ -204,10 +271,18 @@ def should_be_save(index, lane_change_steps, steps_before_cutin, steps_after_cut
     return False
 
 
-def get_single_cutin_demo(original_path, specs):
+def get_single_cutin_demo(
+    original_path,
+    angle_threshold,
+    cutin_dist_threshold,
+    steps_before_cutin,
+    steps_after_cutin,
+):
 
     cutin_steps = 0
-    lane_change_steps = _lane_change_steps(original_path, specs)
+    lane_change_steps = _lane_change_steps(
+        original_path, angle_threshold, cutin_dist_threshold
+    )
     if len(lane_change_steps) == 0:  # no lane change
         return None, 0
     cur_path_builder = PathBuilder(["agent_0"])
@@ -215,8 +290,8 @@ def get_single_cutin_demo(original_path, specs):
         if should_be_save(
             i,
             lane_change_steps,
-            specs["env_specs"]["env_kwargs"]["steps_before_cutin"],
-            specs["env_specs"]["env_kwargs"]["steps_after_cutin"],
+            steps_before_cutin,
+            steps_after_cutin,
         ):
             cur_path_builder["agent_0"].add_all(
                 observations=original_path[i]["observations"],
@@ -249,22 +324,26 @@ def experiment(specs):
         )
 
         with open(save_path / "train_ids.pkl", "wb") as f:
-            print(f"Train Vehicle Num: {len(train_vehicle_ids)}")
             pickle.dump(train_vehicle_ids, f)
         with open(save_path / "test_ids.pkl", "wb") as f:
-            print(f"Test Vehicle Num: {len(test_vehicle_ids)}")
             pickle.dump(test_vehicle_ids, f)
 
     else:
         with open(save_path / "train_ids.pkl", "rb") as f:
             train_vehicle_ids = pickle.load(f)
-        print(f"Loading Train Vehicle Num: {len(train_vehicle_ids)}")
 
     # obtain demo paths
     cutin_demo_trajs = sample_cutin_demos(
         train_vehicle_ids,
         ScenarioZoo.get_scenario("NGSIM-I80"),
-        specs,
+        obs_stack_size=specs["env_specs"]["env_kwargs"]["obs_stack_size"],
+        feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
+        closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
+        use_rnn=specs["env_specs"]["env_kwargs"]["use_rnn"],
+        angle_threshold=specs["env_specs"]["env_kwargs"]["angle_threshold"],
+        cutin_dist_threshold=specs["env_specs"]["env_kwargs"]["cutin_dist_threshold"],
+        steps_before_cutin=specs["env_specs"]["env_kwargs"]["steps_before_cutin"],
+        steps_after_cutin=specs["env_specs"]["env_kwargs"]["steps_after_cutin"],
     )
 
     print(
@@ -275,9 +354,9 @@ def experiment(specs):
 
     file_save_path = Path(save_path).joinpath(
         "smarts_{}_{}_stack-{}_cutin.pkl".format(
-            exp_specs["env_specs"]["scenario_name"],
-            exp_specs["env_specs"]["env_kwargs"]["feature_type"],
-            exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
+            specs["env_specs"]["scenario_name"],
+            specs["env_specs"]["env_kwargs"]["feature_type"],
+            specs["env_specs"]["env_kwargs"]["obs_stack_size"],
         )
     )
     with open(

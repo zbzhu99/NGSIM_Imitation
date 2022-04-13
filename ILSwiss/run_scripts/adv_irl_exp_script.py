@@ -6,6 +6,7 @@ import sys
 import inspect
 import random
 import pickle
+from collections import OrderedDict
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -53,7 +54,7 @@ def experiment(variant):
         traj_list = random.sample(traj_list, variant["traj_num"])
 
     env_specs = variant["env_specs"]
-    env = get_env(env_specs)
+    env = get_env(env_specs, traffic_name="i80_0400-0415")
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}".format(env_specs["env_creator"]))
@@ -194,44 +195,79 @@ def experiment(variant):
 
     train_split_path = listings[variant["expert_name"]]["train_split"][0]
     with open(train_split_path, "rb") as f:
+        # train_vehicle_ids is a OrderedDcit
         train_vehicle_ids = pickle.load(f)
-    train_vehicle_ids_list = np.array_split(
-        train_vehicle_ids,
-        env_specs["training_env_specs"]["env_num"],
-    )  # control len(train_vehicle_ids) / env_num agents in each env.
 
-    print(
-        "Creating {} training environments, each with {} vehicles ...".format(
-            env_specs["training_env_specs"]["env_num"], len(train_vehicle_ids_list[0])
+    train_vehicle_ids_list_mapping = OrderedDict()
+    total_train_trajs_num = sum([len(x) for x in train_vehicle_ids.values()])
+    real_train_env_num = 0
+    for (
+        traffic_name,
+        vehicle_ids,
+    ) in train_vehicle_ids.items():  # keep traffic name to be ordered.
+        traffic_env_num = int(
+            env_specs["training_env_specs"]["env_num"]
+            * len(vehicle_ids)
+            / total_train_trajs_num
+            + 0.5
         )
+        real_train_env_num += traffic_env_num
+        train_vehicle_ids_list_mapping[traffic_name] = np.array_split(
+            vehicle_ids, traffic_env_num
+        )
+        print(
+            f"Training traffic: {traffic_name}, env_num: {traffic_env_num}, "
+            f"vehicle num for each env: {len(train_vehicle_ids_list_mapping[traffic_name][0])}"
+        )
+    env_specs["training_env_specs"]["env_num"] = real_train_env_num
+    env_specs["training_env_specs"]["wait_num"] = min(
+        real_train_env_num, env_specs["training_env_specs"]["wait_num"]
     )
+
     training_env = get_envs(
         env_specs,
         env_wrapper,
-        vehicle_ids_list=train_vehicle_ids_list,
+        vehicle_ids_list_mapping=train_vehicle_ids_list_mapping,
         **env_specs["training_env_specs"],
     )
 
     eval_split_path = listings[variant["expert_name"]]["eval_split"][0]
     with open(eval_split_path, "rb") as f:
+        # eval_vehicle_ids is a OrderedDict
         eval_vehicle_ids = pickle.load(f)
-    eval_vehicle_ids_list = np.array_split(
-        eval_vehicle_ids,
-        env_specs["eval_env_specs"]["env_num"],
-    )
-
-    print(
-        "Creating {} evaluation environments, each with {} vehicles ...".format(
-            env_specs["eval_env_specs"]["env_num"], len(eval_vehicle_ids_list[0])
+    eval_vehicle_ids_list_mapping = OrderedDict()
+    total_train_trajs_num = sum([len(x) for x in eval_vehicle_ids.values()])
+    real_eval_env_num = 0
+    for traffic_name, vehicle_ids in eval_vehicle_ids.items():
+        traffic_env_num = int(
+            env_specs["eval_env_specs"]["env_num"]
+            * len(vehicle_ids)
+            / total_train_trajs_num
+            + 0.5
         )
+        real_eval_env_num += traffic_env_num
+        eval_vehicle_ids_list_mapping[traffic_name] = np.array_split(
+            vehicle_ids, traffic_env_num
+        )
+        print(
+            f"Evaluation traffic: {traffic_name}, env_num: {traffic_env_num}, "
+            f"vehicle num for each env: {len(eval_vehicle_ids_list_mapping[traffic_name][0])}"
+        )
+
+    env_specs["eval_env_specs"]["env_num"] = real_eval_env_num
+    env_specs["eval_env_specs"]["wait_num"] = min(
+        real_eval_env_num, env_specs["eval_env_specs"]["wait_num"]
     )
     eval_env = get_envs(
         env_specs,
         env_wrapper,
-        vehicle_ids_list=eval_vehicle_ids_list,
+        vehicle_ids_list_mapping=eval_vehicle_ids_list_mapping,
         **env_specs["eval_env_specs"],
     )
-    eval_car_num = np.array([len(v_ids) for v_ids in eval_vehicle_ids_list])
+    eval_car_num = []
+    for traffic_name, vehicle_ids_lists in eval_vehicle_ids_list_mapping.items():
+        # should be ordered.
+        eval_car_num.extend([len(x) for x in vehicle_ids_lists])
 
     algorithm = AdvIRL(
         env=env,
@@ -268,7 +304,6 @@ if __name__ == "__main__":
         "training_env_seed"
     ] = exp_specs["seed"]
 
-    exp_suffix = ""
     exp_suffix = "--gp-{}--rs-{}--trajnum-{}".format(
         exp_specs["adv_irl_params"]["grad_pen_weight"],
         exp_specs["sac_params"]["reward_scale"],

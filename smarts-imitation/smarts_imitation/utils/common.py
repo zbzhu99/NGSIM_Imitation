@@ -99,7 +99,7 @@ class CalObs:
                     low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
                 ),
                 neighbor_with_radius_ego_coordinate=gym.spaces.Box(
-                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num"),)
+                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
                 ),
                 neighbor_with_lanes=gym.spaces.Box(
                     low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
@@ -205,7 +205,7 @@ class CalObs:
         neighbor_vehicle_states = env_obs.neighborhood_vehicle_states
         closest_neighbor_num = kwargs.get("closest_neighbor_num", 8)
         # dist, speed, ttc, pos
-        features = np.zeros((closest_neighbor_num,), dtype="float64")
+        features = [None] * closest_neighbor_num
         # get the closest vehicles according to the ego coordinate system
         surrounding_vehicles = _get_closest_vehicles_with_ego_coordinate(
             ego, neighbor_vehicle_states, n=closest_neighbor_num
@@ -213,9 +213,17 @@ class CalObs:
         for i, v in surrounding_vehicles.items():
             if v[0] is None:
                 dist = 15.0
+                heading_vec = [0.0, 0.0]
+                speed = -1.0
             else:
                 dist = min(v[1], 15.0)
-            features[i] = dist
+                heading_rad = _legalize_angle(v[0].heading - ego.heading)
+                heading_vec = radians_to_vec(heading_rad)
+                speed = v[0].speed
+            features[i] = np.array(
+                [dist, heading_vec[0], heading_vec[1], speed], dtype="float64"
+            )
+        features = np.concatenate(features, axis=-1)
 
         return features
 

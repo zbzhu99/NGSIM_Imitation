@@ -11,7 +11,7 @@ variables: {}
 constants:
 
   seed: 0
-  test_ratio: 0.15
+  test_ratio: 0.05
 
   env_specs:
     env_creator: "smarts"
@@ -19,5 +19,5 @@ constants:
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 8
-      obs_stack_size: 4
+      obs_stack_size: 1
       feature_type: "radius"

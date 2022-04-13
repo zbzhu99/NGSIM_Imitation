@@ -14,7 +14,7 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_i80_radius_stack_4'
+  expert_name: 'smarts_i80_radius_stack_1'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
@@ -80,7 +80,7 @@ constants:
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 8
-      obs_stack_size: 4
+      obs_stack_size: 1
       feature_type: "radius"
     training_env_specs:
       env_num: 20

@@ -59,6 +59,7 @@ class PathSampler:
 
         finished_env_ids = []
         env_finished_car_num = np.zeros(self.env_num)
+
         while True:
             self.actions_n[self._ready_env_ids] = self._get_action_and_info(
                 self.observations_n[self._ready_env_ids],
