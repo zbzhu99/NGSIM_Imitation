@@ -21,7 +21,7 @@ from rlkit.core import eval_util
 from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv
 from rlkit.samplers import PathSampler
 from rlkit.torch.common.policies import MakeDeterministic
-from smarts_imitation.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):

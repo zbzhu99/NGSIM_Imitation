@@ -25,7 +25,7 @@ from rlkit.torch.algorithms.sac.sac_alpha import SoftActorCritic
 from rlkit.torch.algorithms.adv_irl.disc_models.simple_disc_models import MLPDisc
 from rlkit.torch.algorithms.adv_irl.adv_irl import AdvIRL
 from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv, EPS
-from smarts_imitation.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):

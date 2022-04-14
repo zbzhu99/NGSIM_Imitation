@@ -28,7 +28,7 @@ from rlkit.torch.algorithms.ma_adv_irl.ma_adv_irl import MAAdvIRL
 from rlkit.torch.algorithms.adv_irl.adv_irl import AdvIRL
 from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv, EPS
 from rlkit.samplers import MultiagentPathSampler
-from smarts_imitation.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):

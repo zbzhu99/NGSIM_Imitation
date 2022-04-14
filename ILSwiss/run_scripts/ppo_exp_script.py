@@ -22,7 +22,7 @@ from rlkit.torch.common.networks import FlattenMlp
 from rlkit.torch.common.policies import ReparamMultivariateGaussianPolicy
 from rlkit.torch.algorithms.ppo.ppo import PPO
 from rlkit.torch.algorithms.torch_rl_algorithm import TorchRLAlgorithm
-from smarts_imitation.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):

@@ -21,7 +21,7 @@ from rlkit.data_management.env_replay_buffer import EnvReplayBuffer
 from rlkit.envs.wrappers import ObsScaledEnv, ProxyEnv, NormalizedBoxActEnv, EPS
 from rlkit.torch.common.policies import ReparamTanhMultivariateGaussianPolicy
 from rlkit.torch.algorithms.bc.bc import BC
-from smarts_imitation.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):

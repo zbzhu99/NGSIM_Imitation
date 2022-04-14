@@ -17,7 +17,7 @@ from rlkit.torch.common.policies import (
     MakeDeterministic,
 )
 from rlkit.torch.algorithms.dagger.dagger import DAgger
-from smarts_imitation.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):
