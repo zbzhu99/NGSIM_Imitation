@@ -3,6 +3,7 @@ import argparse
 import os
 import inspect
 import sys
+import pickle
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -24,8 +25,16 @@ from rlkit.torch.algorithms.torch_rl_algorithm import TorchRLAlgorithm
 
 
 def experiment(variant):
+    with open("demos_listing.yaml", "r") as f:
+        listings = yaml.load(f.read(), Loader=yaml.FullLoader)
+
+    train_split_path = listings[variant["expert_name"]]["train_split"][0]
+    with open(train_split_path, "rb") as f:
+        # train_vehicle_ids is a OrderedDcit
+        train_vehicle_ids = pickle.load(f)
+
     env_specs = variant["env_specs"]
-    env = get_env(env_specs)
+    env = get_env(env_specs, traffic_name=list(train_vehicle_ids.keys())[0])
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}".format(env_specs["env_name"]))

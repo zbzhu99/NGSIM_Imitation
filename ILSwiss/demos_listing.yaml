@@ -10,6 +10,30 @@ smarts_i80_radius_stack_4:
     ./demos/ngsim/train_ids.pkl
   ]
 
+smarts_i80_radius_stack_1:
+  description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
+  file_paths: [
+    ./demos/ngsim/smarts_NGSIM-I80_radius_stack-1.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim/test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ngsim/train_ids.pkl
+  ]
+
+smarts_i80_radius_stack_1_cutin:
+  description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
+  file_paths: [
+    ./demos/ngsim/smarts_NGSIM-I80_radius_stack-1_cutin.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim/cutin_test_ids.pkl
+  ]
+  train_split: [
+    ./demos/ngsim/cutin_train_ids.pkl
+  ]
+
 smarts_i80_lane_stack_4:
   description: "SMARTS, NGSIM, I80, LANE OBS"
   file_paths: [

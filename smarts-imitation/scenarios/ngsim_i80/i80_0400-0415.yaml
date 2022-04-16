@@ -1,7 +1,7 @@
 trajectory_dataset:                                                                                                                                             
     name: i80_0400-0415
     source: NGSIM
-    input_path: ./original/xy-trajectories/i80/trajectories-0400-0415.txt
+    input_path: ../../xy-trajectories/i80/trajectories-0400-0415.txt
  
     # 55mph is roughly 25m/s.  100km/h is roughly 28m/s.
     speed_limit_mps: 28

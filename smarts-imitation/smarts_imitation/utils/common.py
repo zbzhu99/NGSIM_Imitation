@@ -92,14 +92,14 @@ class CalObs:
                 ego_pos=gym.spaces.Box(low=-1e3, high=1e3, shape=(2,)),
                 heading=gym.spaces.Box(low=-1e3, high=1e3, shape=(1,)),
                 distance_to_center=gym.spaces.Box(low=-1e3, high=1e3, shape=(1,)),
-                heading_errors=gym.spaces.Box(low=-1.0, high=1.0, shape=(3,)),
+                lane_errors=gym.spaces.Box(low=-1.0, high=1.0, shape=(3 * 5,)),
                 speed=gym.spaces.Box(low=-330.0, high=330.0, shape=(1,)),
                 steering=gym.spaces.Box(low=-1.0, high=1.0, shape=(1,)),
                 neighbor_with_radius=gym.spaces.Box(
                     low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
                 ),
                 neighbor_with_radius_ego_coordinate=gym.spaces.Box(
-                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num"),)
+                    low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
                 ),
                 neighbor_with_lanes=gym.spaces.Box(
                     low=-1e3, high=1e3, shape=(kwargs.get("closest_neighbor_num") * 4,)
@@ -132,36 +132,50 @@ class CalObs:
         wps = [path[0] for path in waypoint_paths]
         closest_wp = min(wps, key=lambda wp: wp.dist_to(ego.position))
         signed_dist_to_center = closest_wp.signed_lateral_error(ego.position)
-        lane_hwidth = closest_wp.lane_width * 0.5
+        lane_width = closest_wp.lane_width * 0.5
         # TODO(ming): for the case of overwhilm, it will throw error
-        norm_dist_from_center = signed_dist_to_center / lane_hwidth
+        norm_dist_from_center = signed_dist_to_center / lane_width
 
         dist = np.asarray([norm_dist_from_center])
         return dist
 
     @staticmethod
-    def cal_heading_errors(env_obs: Observation, **kwargs):
+    def cal_lane_errors(env_obs: Observation, **kwargs):
         # look_ahead = kwargs["look_ahead"]
         look_ahead = 3
         ego = env_obs.ego_vehicle_state
         waypoint_paths = env_obs.waypoint_paths
         wps = [path[0] for path in waypoint_paths]
         closest_wp = min(wps, key=lambda wp: wp.dist_to(ego.position))
-        closest_path = waypoint_paths[closest_wp.lane_index][:look_ahead]
+        closest_wps = waypoint_paths[closest_wp.lane_index][:look_ahead]
 
-        heading_errors = [
-            math.sin(math.radians(wp.relative_heading(ego.heading)))
-            for wp in closest_path
-        ]
-
-        if len(heading_errors) < look_ahead:
-            last_error = heading_errors[-1]
-            heading_errors = heading_errors + [last_error] * (
-                look_ahead - len(heading_errors)
+        features = []
+        for closest_wp in closest_wps:
+            lane_rel_heading_radians = _legalize_angle(closest_wp.heading - ego.heading)
+            lane_rel_heading_vec = radians_to_vec(lane_rel_heading_radians)
+            wp_rel_pos = [
+                closest_wp.pos[0] - ego.position[0],
+                closest_wp.pos[1] - ego.position[1],
+            ]
+            wp_rel_heading_radians = vec_to_radians(wp_rel_pos)
+            wp_rel_heading_vec = radians_to_vec(
+                _legalize_angle(wp_rel_heading_radians - ego.heading)
             )
+            wp_dist = np.linalg.norm(wp_rel_pos)
 
-        # assert len(heading_errors) == look_ahead
-        return np.asarray(heading_errors)
+            wp_error = [
+                lane_rel_heading_vec[0],
+                lane_rel_heading_vec[1],
+                wp_rel_heading_vec[0],
+                wp_rel_heading_vec[1],
+                wp_dist,
+            ]
+            features.append(wp_error)
+        for _ in range(look_ahead - len(features)):
+            wp_error = [0, 0, 0, 0, -1]
+            features.append(wp_error)
+
+        return np.concatenate(features, axis=-1)
 
     @staticmethod
     def cal_speed(env_obs: Observation, **kwargs):
@@ -205,7 +219,7 @@ class CalObs:
         neighbor_vehicle_states = env_obs.neighborhood_vehicle_states
         closest_neighbor_num = kwargs.get("closest_neighbor_num", 8)
         # dist, speed, ttc, pos
-        features = np.zeros((closest_neighbor_num,), dtype="float64")
+        features = [None] * closest_neighbor_num
         # get the closest vehicles according to the ego coordinate system
         surrounding_vehicles = _get_closest_vehicles_with_ego_coordinate(
             ego, neighbor_vehicle_states, n=closest_neighbor_num
@@ -213,9 +227,17 @@ class CalObs:
         for i, v in surrounding_vehicles.items():
             if v[0] is None:
                 dist = 15.0
+                heading_vec = [0.0, 0.0]
+                speed = -1.0
             else:
                 dist = min(v[1], 15.0)
-            features[i] = dist
+                heading_rad = _legalize_angle(v[0].heading - ego.heading)
+                heading_vec = radians_to_vec(heading_rad)
+                speed = v[0].speed
+            features[i] = np.array(
+                [dist, heading_vec[0], heading_vec[1], speed], dtype="float64"
+            )
+        features = np.concatenate(features, axis=-1)
 
         return features
 
