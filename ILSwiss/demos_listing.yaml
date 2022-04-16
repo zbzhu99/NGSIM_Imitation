@@ -28,10 +28,10 @@ smarts_i80_radius_stack_1_cutin:
     ./demos/ngsim/smarts_NGSIM-I80_radius_stack-1_cutin.pkl
   ]
   eval_split: [
-    ./demos/ngsim/test_ids.pkl
+    ./demos/ngsim/cutin_test_ids.pkl
   ]
   train_split: [
-    ./demos/ngsim/train_ids.pkl
+    ./demos/ngsim/cutin_train_ids.pkl
   ]
 
 smarts_i80_lane_stack_4:

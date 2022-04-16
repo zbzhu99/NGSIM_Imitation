@@ -11,7 +11,7 @@ variables: {}
 constants:
 
   seed: 0
-  test_ratio: 0.05
+  test_ratio: 0.15
 
   env_specs:
     env_creator: "smarts"
@@ -23,5 +23,5 @@ constants:
       feature_type: "radius"
       angle_threshold: 1.57
       cutin_dist_threshold: 15.0
-      steps_before_cutin: 15
-      steps_after_cutin: 15
+      steps_before_cutin: 500
+      steps_after_cutin: 500

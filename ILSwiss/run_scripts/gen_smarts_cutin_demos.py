@@ -6,6 +6,7 @@ import pickle
 import inspect
 from pathlib import Path
 from multiprocessing import Process, Queue
+from collections import defaultdict, OrderedDict
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -14,7 +15,7 @@ print(sys.path)
 
 import numpy as np
 import math
-from gen_smarts_demos import observation_transform, calculate_actions, split_train_test
+from gen_smarts_demos import observation_transform, calculate_actions
 
 from rlkit.data_management.path_builder import PathBuilder
 from rlkit.launchers.launcher_util import set_seed
@@ -28,9 +29,44 @@ from smarts_imitation.utils.common import _legalize_angle
 from smarts_imitation.utils.feature_group import FeatureGroup
 
 
+def split_train_test(scenario_vehicle_ids, test_ratio):
+    scenario_vehicle_ids = OrderedDict(sorted(scenario_vehicle_ids.items()))
+    train_vehicle_ids = {}
+    test_vehicle_ids = {}
+
+    total_trajs_num = sum([len(x) for x in scenario_vehicle_ids.values()])
+    test_trajs_num = int(total_trajs_num * test_ratio)
+    for traffic_name, vehicle_ids in scenario_vehicle_ids.items():
+        if 0 < test_trajs_num < len(vehicle_ids):
+            test_vehicle_ids[traffic_name] = vehicle_ids[:test_trajs_num]
+            train_vehicle_ids[traffic_name] = vehicle_ids[test_trajs_num:]
+            test_trajs_num = 0
+        elif test_trajs_num > 0 and len(vehicle_ids) <= test_trajs_num:
+            test_vehicle_ids[traffic_name] = vehicle_ids
+            test_trajs_num -= len(vehicle_ids)
+        elif test_trajs_num == 0:
+            train_vehicle_ids[traffic_name] = vehicle_ids
+        else:
+            raise ValueError
+    print(
+        "train_vehicle_ids_number: {}".format(
+            {key: len(id_list) for key, id_list in train_vehicle_ids.items()}
+        )
+    )
+    print(
+        "test_vehicle_ids_number: {}".format(
+            {key: len(id_list) for key, id_list in test_vehicle_ids.items()}
+        )
+    )
+    # keep order
+    train_vehicle_ids = OrderedDict(sorted(train_vehicle_ids.items()))
+    test_vehicle_ids = OrderedDict(sorted(test_vehicle_ids.items()))
+
+    return train_vehicle_ids, test_vehicle_ids
+
+
 def work_process(
     cutin_trajs_queue,
-    train_vehicle_ids,
     scenario,
     obs_stack_size,
     feature_list,
@@ -41,6 +77,7 @@ def work_process(
     steps_before_cutin,
     steps_after_cutin,
 ):
+    all_vehicle_ids = list(scenario.discover_missions_of_traffic_histories().keys())
     traffic_name = scenario._traffic_history.name
 
     done_vehicle_num = 0
@@ -113,7 +150,9 @@ def work_process(
 
         """ Handle terminated vehicles. """
         for vehicle in done_vehicles:
-            if vehicle.split("-")[-1] in train_vehicle_ids:
+            if vehicle.split("-")[-1] not in all_vehicle_ids:
+                print(f"***************** vehicle {vehicle} not in all_vehicle_ids")
+            if vehicle.split("-")[-1] in all_vehicle_ids:
                 done_vehicle_num += 1
                 vehicle_name = "Agent-" + vehicle
                 all_original_paths[vehicle_name][-1]["terminals"] = True
@@ -127,7 +166,8 @@ def work_process(
                     steps_after_cutin,
                 )
                 if cutin_demo_traj is not None:
-                    cutin_trajs_queue.put(cutin_demo_traj)
+                    vehicle_id = vehicle.split("-")[-1]
+                    cutin_trajs_queue.put((traffic_name, vehicle_id, cutin_demo_traj))
                     traffic_cutin_steps += cutin_steps
                 print(
                     f"Traffic: {traffic_name}: Agent-{vehicle} Ended, "
@@ -139,7 +179,7 @@ def work_process(
         vehicles = next_observations.keys()
 
         for vehicle in vehicles:
-            if vehicle.split("-")[-1] in train_vehicle_ids and vehicle in observations:
+            if vehicle.split("-")[-1] in all_vehicle_ids and vehicle in observations:
                 if vehicle not in all_original_paths:
                     all_original_paths[vehicle] = []
 
@@ -160,8 +200,9 @@ def work_process(
 
 
 def sample_cutin_demos(
-    train_vehicle_ids,
     scenarios,
+    save_path,
+    test_ratio,
     obs_stack_size,
     feature_list,
     closest_neighbor_num,
@@ -179,13 +220,10 @@ def sample_cutin_demos(
     trajs_queue = Queue()  # Queues are process safe.
     for scenario in scenario_iterator:
         traffic_name = scenario._traffic_history.name
-        if traffic_name not in train_vehicle_ids:
-            continue
         p = Process(
             target=work_process,
             args=(
                 trajs_queue,
-                train_vehicle_ids[traffic_name],
                 scenario,
                 obs_stack_size,
                 feature_list,
@@ -203,21 +241,51 @@ def sample_cutin_demos(
         worker_processes.append(p)
 
     # Don not call p.join().
-    cutin_demo_trajs = []
+    cutin_demo_trajs = {}
+    cutin_vehicle_ids = defaultdict(list)
     while True:  # not reliable
         try:
             if len(cutin_demo_trajs) == 0:
-                traj = trajs_queue.get(block=True)
+                traffic_name, vehicle_id, traj = trajs_queue.get(block=True)
             else:
-                traj = trajs_queue.get(block=True, timeout=300)
-            cutin_demo_trajs.append(traj)
+                traffic_name, vehicle_id, traj = trajs_queue.get(
+                    block=True, timeout=300
+                )
+            cutin_demo_trajs[(traffic_name, vehicle_id)] = traj
+            cutin_vehicle_ids[traffic_name].append(vehicle_id)
             print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}")
         except:
             print("Queue empty! stop collecting.")
             break
     print(f"Append to buffer finished! total {len(cutin_demo_trajs)} trajectories!")
 
-    return cutin_demo_trajs
+    if not os.path.exists(save_path / "cutin_train_ids.pkl") or not os.path.exists(
+        save_path / "cutin_test_ids.pkl"
+    ):
+        print(
+            "\nSplit training and testing vehicles, with test ratio {}\n".format(
+                test_ratio
+            )
+        )
+        cutin_train_vehicle_ids, cutin_test_vehicle_ids = split_train_test(
+            cutin_vehicle_ids, test_ratio
+        )
+
+        with open(save_path / "cutin_train_ids.pkl", "wb") as f:
+            pickle.dump(cutin_train_vehicle_ids, f)
+        with open(save_path / "cutin_test_ids.pkl", "wb") as f:
+            pickle.dump(cutin_test_vehicle_ids, f)
+
+    else:
+        with open(save_path / "cutin_train_ids.pkl", "rb") as f:
+            cutin_train_vehicle_ids = pickle.load(f)
+
+    cutin_train_demo_trajs = []
+    for traffic_name, vehicle_ids in cutin_train_vehicle_ids.items():
+        for vehicle_id in vehicle_ids:
+            cutin_train_demo_trajs.append(cutin_demo_trajs[(traffic_name, vehicle_id)])
+
+    return cutin_train_demo_trajs
 
 
 def _is_lane_change_valid(raw_observations, angle_threshold, cutin_dist_threshold):
@@ -309,32 +377,11 @@ def experiment(specs):
     save_path = Path("./demos/ngsim")
     os.makedirs(save_path, exist_ok=True)
 
-    if not os.path.exists(save_path / "train_ids.pkl") or not os.path.exists(
-        save_path / "test_ids.pkl"
-    ):
-        print(
-            "\nSplit training and testing vehicles, with test ratio {}\n".format(
-                specs["test_ratio"]
-            )
-        )
-        train_vehicle_ids, test_vehicle_ids = split_train_test(
-            ScenarioZoo.get_scenario("NGSIM-I80"),
-            specs["test_ratio"],
-        )
-
-        with open(save_path / "train_ids.pkl", "wb") as f:
-            pickle.dump(train_vehicle_ids, f)
-        with open(save_path / "test_ids.pkl", "wb") as f:
-            pickle.dump(test_vehicle_ids, f)
-
-    else:
-        with open(save_path / "train_ids.pkl", "rb") as f:
-            train_vehicle_ids = pickle.load(f)
-
     # obtain demo paths
     cutin_demo_trajs = sample_cutin_demos(
-        train_vehicle_ids,
         ScenarioZoo.get_scenario("NGSIM-I80"),
+        save_path,
+        test_ratio=specs["test_ratio"],
         obs_stack_size=specs["env_specs"]["env_kwargs"]["obs_stack_size"],
         feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
         closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
