@@ -2,6 +2,7 @@ import yaml
 import argparse
 import os
 import sys
+import queue
 import pickle
 import inspect
 from pathlib import Path
@@ -254,7 +255,7 @@ def sample_cutin_demos(
             cutin_demo_trajs[(traffic_name, vehicle_id)] = traj
             cutin_vehicle_ids[traffic_name].append(vehicle_id)
             print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}")
-        except:
+        except queue.Empty:
             print("Queue empty! stop collecting.")
             break
     print(f"Append to buffer finished! total {len(cutin_demo_trajs)} trajectories!")

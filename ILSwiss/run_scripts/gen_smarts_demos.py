@@ -2,6 +2,7 @@ import yaml
 import argparse
 import os
 import sys
+import queue
 import pickle
 import inspect
 from pathlib import Path
@@ -271,7 +272,7 @@ def sample_demos(
                 traj = trajs_queue.get(block=True, timeout=100)
             demo_trajs.append(traj)
             print(f"main process: collected trajs num: {len(demo_trajs)}")
-        except:
+        except queue.Empty:
             print("Queue empty! stop collecting.")
             break
     print(f"Append to buffer finished! total {len(demo_trajs)} trajectories!")

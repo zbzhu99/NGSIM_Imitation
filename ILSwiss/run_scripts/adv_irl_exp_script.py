@@ -6,7 +6,6 @@ import sys
 import inspect
 import random
 import pickle
-from collections import OrderedDict
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
