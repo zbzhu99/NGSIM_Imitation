@@ -18,6 +18,7 @@ class SMARTSImitation:
     def __init__(
         self,
         scenarios: List[str],
+        traffic_name: None,
         action_range: np.ndarray,
         obs_stack_size: int = 1,
         vehicle_ids: np.ndarray = None,
@@ -35,13 +36,16 @@ class SMARTSImitation:
         self.control_all_vehicles = control_all_vehicles
         self.obs_stack_size = obs_stack_size
         self.use_rnn = use_rnn
+        self.traffic_name = traffic_name
 
         self.control_vehicle_num = self.n_agents = control_vehicle_num
         self.vehicle_ids = vehicle_ids
         if vehicle_ids is None:
             print("Use All Vehicles")
 
-        self.scenarios_iterator = Scenario.scenario_variations(scenarios, [])
+        self.scenarios_iterator = Scenario.scenario_variations(
+            scenarios, [], shuffle_scenarios=False, circular=False
+        )
         self._init_scenario()
         # Num of all combinations of different controlled vehicles used.
         self.episode_num = len(self.vehicle_ids) - self.control_vehicle_num + 1
@@ -237,7 +241,13 @@ class SMARTSImitation:
         return full_obs_n
 
     def _init_scenario(self):
-        self.scenario = next(self.scenarios_iterator)
+        self.scenario = None
+        for scenario in self.scenarios_iterator:
+            if scenario._traffic_history.name == self.traffic_name:
+                self.scenario = scenario
+                break
+        assert self.scenario is not None
+
         self.vehicle_missions = self.scenario.discover_missions_of_traffic_histories()
         if self.vehicle_ids is None:
             self.vehicle_ids = np.array(list(self.vehicle_missions.keys()))

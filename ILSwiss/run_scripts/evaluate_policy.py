@@ -21,13 +21,21 @@ from rlkit.core import eval_util
 from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv
 from rlkit.samplers import PathSampler
 from rlkit.torch.common.policies import MakeDeterministic
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):
     env_specs = variant["env_specs"]
 
+    with open("demos_listing.yaml", "r") as f:
+        listings = yaml.load(f.read(), Loader=yaml.FullLoader)
+    eval_split_path = listings[variant["expert_name"]]["eval_split"][0]
+    with open(eval_split_path, "rb") as f:
+        # eval_vehicle_ids is a OrderedDict
+        eval_vehicle_ids = pickle.load(f)
+
     """ 1. Create Template Env and Eval Vector Envs """
-    env = get_env(env_specs)
+    env = get_env(env_specs, traffic_name=list(eval_vehicle_ids.keys())[0])
     env.seed(env_specs["eval_env_seed"])
 
     print("\nEnv: {}".format(env_specs["env_creator"]))
@@ -42,8 +50,6 @@ def experiment(variant):
             break
 
     if variant["scale_env_with_demo_stats"]:
-        with open("demos_listing.yaml", "r") as f:
-            listings = yaml.load(f.read(), Loader=yaml.FullLoader)
         demos_path = listings[variant["expert_name"]]["file_paths"][
             variant["expert_idx"]
         ]
@@ -73,31 +79,35 @@ def experiment(variant):
 
     env = env_wrapper(env)
 
-    eval_split_path = listings[variant["expert_name"]]["eval_split"][0]
-    with open(eval_split_path, "rb") as f:
-        eval_vehicle_ids = pickle.load(f)
-    eval_vehicle_ids_list = np.array_split(
-        eval_vehicle_ids,
-        env_specs["eval_env_specs"]["env_num"],
+    eval_splitted_vehicle_ids, eval_real_env_num = split_vehicle_ids(
+        eval_vehicle_ids, env_specs["eval_env_specs"]["env_num"]
+    )
+    eval_env_nums = {
+        traffic_name: len(ids_list)
+        for traffic_name, ids_list in eval_splitted_vehicle_ids.items()
+    }
+    print("eval env nums: {}".format(eval_env_nums))
+    env_specs["eval_env_specs"]["env_num"] = eval_real_env_num
+    env_specs["eval_env_specs"]["wait_num"] = min(
+        eval_real_env_num, env_specs["eval_env_specs"]["wait_num"]
     )
 
     # Vehicles are splitted and assigned to different vector environments, and those from
     # different envs will not be controlled together. Thus, evaluation result will vary with
     # the number of evaluation envs when env.control_vehicle_num > 1.
-    print(
-        "\nCreating {} evaluation environments, each with {} vehicles ...\n".format(
-            env_specs["eval_env_specs"]["env_num"], len(eval_vehicle_ids_list[0])
-        )
-    )
+
     eval_env = get_envs(
         env_specs,
         env_wrapper,
-        vehicle_ids_list=eval_vehicle_ids_list,
+        splitted_vehicle_ids=eval_splitted_vehicle_ids,
         **env_specs["eval_env_specs"],
     )
-    eval_car_num = np.array(
-        [len(v_ids) - env.control_vehicle_num + 1 for v_ids in eval_vehicle_ids_list]
-    )
+    eval_car_num = []
+    for vehicle_ids_lists in eval_splitted_vehicle_ids.values():
+        # should be ordered.
+        eval_car_num.extend(
+            [len(x) - env.control_vehicle_num + 1 for x in vehicle_ids_lists]
+        )
 
     """ 2. Load Checkpoint Policies """
     # all agents share the same policy

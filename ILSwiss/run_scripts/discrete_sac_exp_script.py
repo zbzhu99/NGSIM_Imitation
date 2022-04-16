@@ -3,6 +3,7 @@ import sys
 import yaml
 import inspect
 import argparse
+import pickle
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -19,11 +20,20 @@ from rlkit.torch.common.networks import FlattenMlp
 from rlkit.torch.common.policies import DiscretePolicy
 from rlkit.torch.algorithms.discrete_sac.discrete_sac import DiscreteSoftActorCritic
 from rlkit.torch.algorithms.torch_rl_algorithm import TorchRLAlgorithm
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):
+
+    with open("demos_listing.yaml", "r") as f:
+        listings = yaml.load(f.read(), Loader=yaml.FullLoader)
+    train_split_path = listings[variant["expert_name"]]["train_split"][0]
+    with open(train_split_path, "rb") as f:
+        # train_vehicle_ids is a OrderedDcit
+        train_vehicle_ids = pickle.load(f)
+
     env_specs = variant["env_specs"]
-    env = get_env(env_specs)
+    env = get_env(env_specs, traffic_name=list(train_vehicle_ids.keys())[0])
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}:{}".format(env_specs["env_creator"], env_specs["env_name"]))
@@ -84,7 +94,23 @@ def experiment(variant):
     env_wrapper = ProxyEnv  # Identical wrapper
 
     env = env_wrapper(env)
-    training_env = get_envs(env_specs, env_wrapper)
+    train_splitted_vehicle_ids, train_real_env_num = split_vehicle_ids(
+        train_vehicle_ids, env_specs["training_env_specs"]["env_num"]
+    )
+    train_env_nums = {
+        traffic_name: len(ids_list)
+        for traffic_name, ids_list in train_splitted_vehicle_ids.items()
+    }
+    print("training env nums: {}".format(train_env_nums))
+    env_specs["training_env_specs"]["env_num"] = train_real_env_num
+    env_specs["training_env_specs"]["wait_num"] = min(
+        train_real_env_num, env_specs["training_env_specs"]["wait_num"]
+    )
+    training_env = get_envs(
+        env_specs,
+        env_wrapper,
+        splitted_vehicle_ids=train_splitted_vehicle_ids,
+    )
     training_env.seed(env_specs["training_env_seed"])
 
     algorithm = TorchRLAlgorithm(

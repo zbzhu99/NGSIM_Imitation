@@ -1,7 +1,7 @@
 FeatureGroup = {
     "radius": [
         "ego_dynamics",
-        "heading_errors",
+        "lane_errors",
         "neighbor_with_radius_ego_coordinate",
     ],
     "lane": [

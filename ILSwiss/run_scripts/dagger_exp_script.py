@@ -17,6 +17,7 @@ from rlkit.torch.common.policies import (
     MakeDeterministic,
 )
 from rlkit.torch.algorithms.dagger.dagger import DAgger
+from smarts_imitation.utils.env_split import split_vehicle_ids
 
 
 def experiment(variant):
@@ -44,6 +45,11 @@ def experiment(variant):
         traj_list = pickle.load(f)
     traj_list = random.sample(traj_list, variant["traj_num"])
 
+    train_split_path = listings[variant["expert_name"]]["train_split"][0]
+    with open(train_split_path, "rb") as f:
+        # train_vehicle_ids is a OrderedDcit
+        train_vehicle_ids = pickle.load(f)
+
     obs = np.vstack([traj_list[i]["observations"] for i in range(len(traj_list))])
     obs_mean, obs_std = np.mean(obs, axis=0), np.std(obs, axis=0)
     # acts_mean, acts_std = np.mean(acts, axis=0), np.std(acts, axis=0)
@@ -56,7 +62,7 @@ def experiment(variant):
     # print("acts_std:{}".format(acts_std))
 
     env_specs = variant["env_specs"]
-    env = get_env(env_specs)
+    env = get_env(env_specs, traffic_name=list(train_vehicle_ids.keys())[0])
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}".format(env_specs["env_name"]))
@@ -105,7 +111,24 @@ def experiment(variant):
         )
 
     env = env_wrapper(env, **kwargs)
-    training_env = get_envs(env_specs, env_wrapper, **kwargs)
+    train_splitted_vehicle_ids, train_real_env_num = split_vehicle_ids(
+        train_vehicle_ids, env_specs["training_env_specs"]["env_num"]
+    )
+    train_env_nums = {
+        traffic_name: len(ids_list)
+        for traffic_name, ids_list in train_splitted_vehicle_ids.items()
+    }
+    print("training env nums: {}".format(train_env_nums))
+    env_specs["training_env_specs"]["env_num"] = train_real_env_num
+    env_specs["training_env_specs"]["wait_num"] = min(
+        train_real_env_num, env_specs["training_env_specs"]["wait_num"]
+    )
+    training_env = get_envs(
+        env_specs,
+        env_wrapper,
+        splitted_vehicle_ids=train_splitted_vehicle_ids,
+        **kwargs,
+    )
     training_env.seed(env_specs["training_env_seed"])
 
     obs_dim = obs_space.shape[0]
@@ -131,7 +154,7 @@ def experiment(variant):
         exploration_policy=policy,
         expert_policy=expert_policy,
         expert_replay_buffer=expert_replay_buffer,
-        **variant["dagger_params"]
+        **variant["dagger_params"],
     )
 
     if ptu.gpu_enabled():

@@ -4,13 +4,18 @@ from rlkit.env_creators.base_env import BaseEnv
 
 
 class SmartsEnv(BaseEnv):
-    def __init__(self, vehicle_ids=None, **configs):
+    def __init__(self, traffic_name, vehicle_ids=None, **configs):
         super().__init__(**configs)
 
         # create underlying smarts simulator
         env_kwargs = configs["env_kwargs"]
         scenario_name = configs["scenario_name"]
-        self._env = create_env(scenario_name, vehicle_ids=vehicle_ids, **env_kwargs)
+        self._env = create_env(
+            scenario_name,
+            traffic_name=traffic_name,
+            vehicle_ids=vehicle_ids,
+            **env_kwargs
+        )
 
         self.n_agents = self._env.n_agents
         self.agent_ids = self._env.agent_ids
