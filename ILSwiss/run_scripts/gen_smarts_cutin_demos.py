@@ -153,9 +153,12 @@ def work_process(
         for vehicle in done_vehicles:
             if vehicle.split("-")[-1] not in all_vehicle_ids:
                 print(f"***************** vehicle {vehicle} not in all_vehicle_ids")
-            if vehicle.split("-")[-1] in all_vehicle_ids:
+            vehicle_name = "Agent-" + vehicle
+            if (
+                vehicle.split("-")[-1] in all_vehicle_ids
+                and vehicle_name in all_original_paths
+            ):
                 done_vehicle_num += 1
-                vehicle_name = "Agent-" + vehicle
                 all_original_paths[vehicle_name][-1]["terminals"] = True
 
                 original_path = all_original_paths.pop(vehicle_name)
@@ -380,7 +383,7 @@ def experiment(specs):
 
     # obtain demo paths
     cutin_demo_trajs = sample_cutin_demos(
-        ScenarioZoo.get_scenario("NGSIM-I80"),
+        ScenarioZoo.get_scenario(specs["env_specs"]["scenario_name"]),
         save_path,
         test_ratio=specs["test_ratio"],
         obs_stack_size=specs["env_specs"]["env_kwargs"]["obs_stack_size"],

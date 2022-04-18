@@ -199,7 +199,10 @@ def work_process(
 
         """ Handle terminated vehicles. """
         for vehicle in done_vehicles:
-            if vehicle.split("-")[-1] in train_vehicle_ids:
+            if (
+                vehicle.split("-")[-1] in train_vehicle_ids
+                and "Agent-" + vehicle in path_builders
+            ):
                 cur_path_builder = path_builders["Agent-" + vehicle]
                 cur_path_builder["agent_0"]["terminals"][-1] = True
                 trajs_queue.put(cur_path_builder)
@@ -293,7 +296,7 @@ def experiment(specs):
             )
         )
         train_vehicle_ids, test_vehicle_ids = split_train_test(
-            ScenarioZoo.get_scenario("NGSIM-I80"),
+            ScenarioZoo.get_scenario(specs["env_specs"]["scenario_name"]),
             specs["test_ratio"],
         )
 
@@ -309,7 +312,7 @@ def experiment(specs):
     # obtain demo paths
     demo_trajs = sample_demos(
         train_vehicle_ids,
-        ScenarioZoo.get_scenario("NGSIM-I80"),
+        ScenarioZoo.get_scenario(specs["env_specs"]["scenario_name"]),
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
         feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
         closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
