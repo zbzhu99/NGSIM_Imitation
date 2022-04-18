@@ -30,7 +30,7 @@ constants:
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "NGSIM-I80"
+    scenario_name: "ngsim_i80"
     env_kwargs: {}
     eval_env_specs:
       env_num: 15

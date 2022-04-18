@@ -16,7 +16,7 @@ print(sys.path)
 
 import numpy as np
 import math
-from gen_smarts_demos import observation_transform, calculate_actions
+from gen_smarts_demos import observation_transform, calculate_actions, split_train_test
 
 from rlkit.data_management.path_builder import PathBuilder
 from rlkit.launchers.launcher_util import set_seed
@@ -28,42 +28,6 @@ from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.common import _legalize_angle
 from smarts_imitation.utils.feature_group import FeatureGroup
-
-
-def split_train_test(scenario_vehicle_ids, test_ratio):
-    scenario_vehicle_ids = OrderedDict(sorted(scenario_vehicle_ids.items()))
-    train_vehicle_ids = {}
-    test_vehicle_ids = {}
-
-    total_trajs_num = sum([len(x) for x in scenario_vehicle_ids.values()])
-    test_trajs_num = int(total_trajs_num * test_ratio)
-    for traffic_name, vehicle_ids in scenario_vehicle_ids.items():
-        if 0 < test_trajs_num < len(vehicle_ids):
-            test_vehicle_ids[traffic_name] = vehicle_ids[:test_trajs_num]
-            train_vehicle_ids[traffic_name] = vehicle_ids[test_trajs_num:]
-            test_trajs_num = 0
-        elif test_trajs_num > 0 and len(vehicle_ids) <= test_trajs_num:
-            test_vehicle_ids[traffic_name] = vehicle_ids
-            test_trajs_num -= len(vehicle_ids)
-        elif test_trajs_num == 0:
-            train_vehicle_ids[traffic_name] = vehicle_ids
-        else:
-            raise ValueError
-    print(
-        "train_vehicle_ids_number: {}".format(
-            {key: len(id_list) for key, id_list in train_vehicle_ids.items()}
-        )
-    )
-    print(
-        "test_vehicle_ids_number: {}".format(
-            {key: len(id_list) for key, id_list in test_vehicle_ids.items()}
-        )
-    )
-    # keep order
-    train_vehicle_ids = OrderedDict(sorted(train_vehicle_ids.items()))
-    test_vehicle_ids = OrderedDict(sorted(test_vehicle_ids.items()))
-
-    return train_vehicle_ids, test_vehicle_ids
 
 
 def work_process(
@@ -377,13 +341,13 @@ def get_single_cutin_demo(
 
 
 def experiment(specs):
-
-    save_path = Path("./demos/ngsim")
+    scenario_name = specs["env_specs"]["scenario_name"]
+    save_path = Path(f"./demos/{scenario_name}")
     os.makedirs(save_path, exist_ok=True)
 
     # obtain demo paths
     cutin_demo_trajs = sample_cutin_demos(
-        ScenarioZoo.get_scenario(specs["env_specs"]["scenario_name"]),
+        ScenarioZoo.get_scenario(scenario_name),
         save_path,
         test_ratio=specs["test_ratio"],
         obs_stack_size=specs["env_specs"]["env_kwargs"]["obs_stack_size"],

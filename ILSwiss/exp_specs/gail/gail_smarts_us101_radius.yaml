@@ -14,7 +14,7 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_i80_radius_stack_4'
+  expert_name: 'smarts_us101_radius_stack_1'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
@@ -41,7 +41,7 @@ constants:
     eval_deterministic: true
 
     replay_buffer_size: 2000000
-    expert_buffer_size: 1000000
+    expert_buffer_size: 3500000
     no_terminal: false
     eval_no_terminal: false
 
@@ -64,7 +64,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 1.0
+    alpha: 0.7
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25
@@ -80,7 +80,7 @@ constants:
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 8
-      obs_stack_size: 4
+      obs_stack_size: 1
       feature_type: "radius"
     training_env_specs:
       env_num: 20

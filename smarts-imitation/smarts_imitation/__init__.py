@@ -6,10 +6,10 @@ from smarts_imitation.envs import SMARTSImitation
 
 class ScenarioZoo:
     _scenarios = {
-        "NGSIM-I80": str(
+        "ngsim_i80": str(
             Path(__file__).resolve().parent.parent / "scenarios" / "ngsim_i80"
         ),
-        "NGSIM-US101": str(
+        "ngsim_us101": str(
             Path(__file__).resolve().parent.parent / "scenarios" / "ngsim_us101"
         ),
     }
@@ -24,9 +24,9 @@ class ScenarioZoo:
 
 
 def create_env(scenario_name, traffic_name, **kwargs):
-    if scenario_name == "NGSIM-I80":
+    if scenario_name == "ngsim_i80":
         return SMARTSImitation(
-            scenarios=[ScenarioZoo.get_scenario("NGSIM-I80")],
+            scenarios=[ScenarioZoo.get_scenario("ngsim_i80")],
             traffic_name=traffic_name,
             action_range=np.array(
                 [
@@ -36,9 +36,9 @@ def create_env(scenario_name, traffic_name, **kwargs):
             ),
             **kwargs,
         )
-    elif scenario_name == "NGSIM-US101":
+    elif scenario_name == "ngsim_us101":
         return SMARTSImitation(
-            scenarios=[ScenarioZoo.get_scenario("NGSIM-US101")],
+            scenarios=[ScenarioZoo.get_scenario("ngsim_us101")],
             traffic_name=traffic_name,
             action_range=np.array(
                 [

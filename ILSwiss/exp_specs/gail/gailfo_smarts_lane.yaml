@@ -76,7 +76,7 @@ constants:
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "NGSIM-I80"
+    scenario_name: "ngsim_i80"
     env_kwargs:
       neighbor_mode: "LANE"
       closest_neighbor_num: 6
