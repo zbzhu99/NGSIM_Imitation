@@ -12,16 +12,11 @@ print(sys.path)
 from smarts.core.smarts import SMARTS
 from smarts.core.scenario import Scenario
 from envision.client import Client as Envision
-#from smarts_imitation import ScenarioZoo
+from smarts_imitation import ScenarioZoo
 
 
-def experiment(scenario_path):
-    traffic_name = "us101_0750-0805"
-    scenario_name = "ngsim_us101"
+def experiment(scenario_path, scenario_name, traffic_name):
 
-    #scenario_path = ScenarioZoo.get_scenario(scenario_name)
-
-    scenarios = "./smarts-imitation/scenarios/ngsim_us101"
     scenario_iterator = Scenario.scenario_variations(
         [scenario_path], list([]), shuffle_scenarios=False, circular=False
     )  # scenarios with different traffic histories.
@@ -52,7 +47,11 @@ def experiment(scenario_path):
 
 
 if __name__ == "__main__":
-    scenario_path = "./smarts-imitation/scenarios/ngsim_us101"
+
+    scenario_name = "ngsim_us101"
+    traffic_name = "us101_0750-0805"
+    scenario_path = ScenarioZoo.get_scenario(scenario_name)
+
     # Arguments
     envision_proc = Popen(
         f"scl envision start -s {scenario_path} -p 8081",
@@ -61,7 +60,7 @@ if __name__ == "__main__":
     )
 
     try:
-        experiment(scenario_path)
+        experiment(scenario_path, scenario_name, traffic_name)
     except Exception as e:
         os.killpg(os.getpgid(envision_proc.pid), signal.SIGTERM)
         envision_proc.wait()
