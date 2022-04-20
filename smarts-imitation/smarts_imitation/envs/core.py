@@ -41,7 +41,6 @@ class SMARTSImitation:
 
         self.control_vehicle_num = self.n_agents = control_vehicle_num
         self.vehicles = vehicles
-        # print(self.vehicles)
         if vehicles is None:
             print("Use All Vehicles")
 
@@ -173,9 +172,11 @@ class SMARTSImitation:
         if self.time_slice:
             for agent_id in full_obs_n.keys():
                 vehicle_id = self.aid_to_vid[agent_id]
-                if self.smarts.elapsed_sim_time > self.vehicle_end_times[vehicle_id]:
+                if (
+                    self.smarts.elapsed_sim_time
+                    > self.vehicle_end_times[vehicle_id] - self.history_start_time
+                ):
                     self.done_n[agent_id] = True
-                    print("time slice !!!!!!!!")
 
         return (
             full_obs_n,
@@ -208,23 +209,24 @@ class SMARTSImitation:
 
         agent_interfaces = {}
         # Find the earliest start time among all selected vehicles.
-        history_start_time = np.inf
+        self.history_start_time = np.inf
         for agent_id in self.agent_ids:
             vehicle_id = self.aid_to_vid[agent_id]
             agent_interfaces[agent_id] = self.agent_spec.interface
-            history_start_time = min(
-                history_start_time, self.vehicle_start_times[vehicle_id]
+            self.history_start_time = min(
+                self.history_start_time, self.vehicle_start_times[vehicle_id]
             )
 
-        traffic_history_provider.start_time = history_start_time
-        ego_missions = {}
+        traffic_history_provider.start_time = self.history_start_time
+        self.ego_missions = {}
         for agent_id in self.agent_ids:
             vehicle_id = self.aid_to_vid[agent_id]
-            ego_missions[agent_id] = replace(
+            self.ego_missions[agent_id] = replace(
                 self.vehicle_missions[vehicle_id],
-                start_time=self.vehicle_start_times[vehicle_id] - history_start_time,
+                start_time=self.vehicle_start_times[vehicle_id]
+                - self.history_start_time,
             )
-        self.scenario.set_ego_missions(ego_missions)
+        self.scenario.set_ego_missions(self.ego_missions)
         self.smarts.switch_ego_agents(agent_interfaces)
 
         raw_observation_n = self.smarts.reset(self.scenario)

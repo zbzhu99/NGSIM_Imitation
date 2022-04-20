@@ -87,7 +87,7 @@ def work_process(
         obs_stack_size,
         use_rnn,
     )
-    elapsed_sim_time = smarts._elapsed_sim_time
+    elapsed_sim_time = smarts.elapsed_sim_time
 
     while True:
         """Step in the environment."""
@@ -113,7 +113,7 @@ def work_process(
             obs_stack_size,
             use_rnn,
         )
-        next_elapsed_sim_time = smarts._elapsed_sim_time
+        next_elapsed_sim_time = smarts.elapsed_sim_time
         actions = calculate_actions(raw_observations, raw_next_observations)
 
         """ Handle terminated vehicles. """
