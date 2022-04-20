@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 
-def get_env(env_specs, traffic_name, vehicle_ids=None):
+def get_env(env_specs, traffic_name, vehicles=None):
     """
     env_specs:
         env_name: 'mujoco'
@@ -25,7 +25,7 @@ def get_env(env_specs, traffic_name, vehicle_ids=None):
     except KeyError:
         print("Unknown env name: {}".format(env_specs["env_creator"]))
 
-    env = env_class(traffic_name=traffic_name, vehicle_ids=vehicle_ids, **env_specs)
+    env = env_class(traffic_name=traffic_name, vehicles=vehicles, **env_specs)
 
     return env
 
@@ -33,7 +33,7 @@ def get_env(env_specs, traffic_name, vehicle_ids=None):
 def get_envs(
     env_specs: Dict[str, Any],
     env_wrapper: Callable[..., Env] = None,
-    splitted_vehicle_ids: Dict[str, np.ndarray] = {},
+    splitted_vehicles: Dict[str, np.ndarray] = {},
     env_num: int = 1,
     wait_num: int = None,
     auto_reset: bool = False,
@@ -48,7 +48,7 @@ def get_envs(
         splitted_vehicle_ids_list: {traffic_name: [[vehicle_ids],...]}
     """
 
-    assert env_num == sum([len(x) for x in splitted_vehicle_ids.values()])
+    assert env_num == sum([len(x) for x in splitted_vehicles.values()])
     if env_wrapper is None:
         env_wrapper = ProxyEnv
 
@@ -58,11 +58,11 @@ def get_envs(
         print("Unknown env name: {}".format(env_specs["env_creator"]))
 
     env_fns = []
-    for traffic_name, traffic_vehicle_ids_lists in splitted_vehicle_ids.items():
-        for traffic_vehicle_ids_list in traffic_vehicle_ids_lists:
+    for traffic_name, traffic_vehicles_lists in splitted_vehicles.items():
+        for traffic_vehicles in traffic_vehicles_lists:
             env_fns.append(
-                lambda ids=traffic_vehicle_ids_list, name=traffic_name: env_wrapper(
-                    env_class(traffic_name=name, vehicle_ids=ids, **env_specs)
+                lambda vs=traffic_vehicles, name=traffic_name: env_wrapper(
+                    env_class(traffic_name=name, vehicles=vs, **env_specs)
                 )
             )
 

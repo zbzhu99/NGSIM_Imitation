@@ -28,42 +28,43 @@ from smarts.core.utils.math import radians_to_vec
 from smarts_imitation.utils.feature_group import FeatureGroup
 from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
+from smarts_imitation.utils.vehicle_with_time import VehicleWithTime
 
 
-def split_train_test(scenario_vehicle_ids, test_ratio):
-    scenario_vehicle_ids = OrderedDict(sorted(scenario_vehicle_ids.items()))
-    train_vehicle_ids = {}
-    test_vehicle_ids = {}
+def split_train_test(scenario_vehicles, test_ratio):
+    scenario_vehicles = OrderedDict(sorted(scenario_vehicles.items()))
+    train_vehicles = {}
+    test_vehicles = {}
 
-    total_trajs_num = sum([len(x) for x in scenario_vehicle_ids.values()])
+    total_trajs_num = sum([len(x) for x in scenario_vehicles.values()])
     test_trajs_num = int(total_trajs_num * test_ratio)
-    for traffic_name, vehicle_ids in scenario_vehicle_ids.items():
-        if 0 < test_trajs_num < len(vehicle_ids):
-            test_vehicle_ids[traffic_name] = vehicle_ids[:test_trajs_num]
-            train_vehicle_ids[traffic_name] = vehicle_ids[test_trajs_num:]
+    for traffic_name, vehicles in scenario_vehicles.items():
+        if 0 < test_trajs_num < len(vehicles):
+            test_vehicles[traffic_name] = vehicles[:test_trajs_num]
+            train_vehicles[traffic_name] = vehicles[test_trajs_num:]
             test_trajs_num = 0
-        elif test_trajs_num > 0 and len(vehicle_ids) <= test_trajs_num:
-            test_vehicle_ids[traffic_name] = vehicle_ids
-            test_trajs_num -= len(vehicle_ids)
+        elif test_trajs_num > 0 and len(vehicles) <= test_trajs_num:
+            test_vehicles[traffic_name] = vehicles
+            test_trajs_num -= len(vehicles)
         elif test_trajs_num == 0:
-            train_vehicle_ids[traffic_name] = vehicle_ids
+            train_vehicles[traffic_name] = vehicles
         else:
             raise ValueError
     print(
         "train_vehicle_ids_number: {}".format(
-            {key: len(id_list) for key, id_list in train_vehicle_ids.items()}
+            {key: len(vs) for key, vs in train_vehicles.items()}
         )
     )
     print(
         "test_vehicle_ids_number: {}".format(
-            {key: len(id_list) for key, id_list in test_vehicle_ids.items()}
+            {key: len(vs) for key, vs in test_vehicles.items()}
         )
     )
     # keep order
-    train_vehicle_ids = OrderedDict(sorted(train_vehicle_ids.items()))
-    test_vehicle_ids = OrderedDict(sorted(test_vehicle_ids.items()))
+    train_vehicles = OrderedDict(sorted(train_vehicles.items()))
+    test_vehicles = OrderedDict(sorted(test_vehicles.items()))
 
-    return train_vehicle_ids, test_vehicle_ids
+    return train_vehicles, test_vehicles
 
 
 def convert_single_obs(single_observation, observation_adapter):
@@ -261,7 +262,7 @@ def sample_demos(
 
     # Do not call p.join().
     demo_trajs = {}
-    scenario_vehicle_ids = defaultdict(list)
+    scenario_vehicles = defaultdict(list)
     while True:  # not reliable
         try:
             if len(demo_trajs) == 0:
@@ -270,39 +271,40 @@ def sample_demos(
                 traffic_name, vehicle_id, traj = trajs_queue.get(
                     block=True, timeout=100
                 )
-            demo_trajs[(traffic_name, vehicle_id)] = traj
-            scenario_vehicle_ids[traffic_name].append(vehicle_id)
+            vehicle_with_time = VehicleWithTime(
+                vehicle_id=vehicle_id, start_time=None, end_time=None
+            )
+            demo_trajs[vehicle_with_time] = traj
+            scenario_vehicles[traffic_name].append(vehicle_with_time)
             print(f"main process: collected trajs num: {len(demo_trajs)}")
         except queue.Empty:
             print("Queue empty! stop collecting.")
             break
     print(f"Append to buffer finished! total {len(demo_trajs)} trajectories!")
 
-    if not os.path.exists(save_path / "train_ids.pkl") or not os.path.exists(
-        save_path / "test_ids.pkl"
+    if not os.path.exists(save_path / "train_vehicles.pkl") or not os.path.exists(
+        save_path / "test_vehicles.pkl"
     ):
         print(
             "\nSplit training and testing vehicles, with test ratio {}\n".format(
                 test_ratio
             )
         )
-        train_vehicle_ids, test_vehicle_ids = split_train_test(
-            scenario_vehicle_ids, test_ratio
-        )
+        train_vehicles, test_vehicles = split_train_test(scenario_vehicles, test_ratio)
 
-        with open(save_path / "train_ids.pkl", "wb") as f:
-            pickle.dump(train_vehicle_ids, f)
-        with open(save_path / "test_ids.pkl", "wb") as f:
-            pickle.dump(test_vehicle_ids, f)
+        with open(save_path / "train_vehicles.pkl", "wb") as f:
+            pickle.dump(train_vehicles, f)
+        with open(save_path / "test_vehicles.pkl", "wb") as f:
+            pickle.dump(test_vehicles, f)
 
     else:
-        with open(save_path / "train_ids.pkl", "rb") as f:
-            train_vehicle_ids = pickle.load(f)
+        with open(save_path / "train_vehicles.pkl", "rb") as f:
+            train_vehicles = pickle.load(f)
 
     train_demo_trajs = []
-    for traffic_name, vehicle_ids in train_vehicle_ids.items():
-        for vehicle_id in vehicle_ids:
-            train_demo_trajs.append(demo_trajs[(traffic_name, vehicle_id)])
+    for traffic_name, vehicles in train_vehicles.items():
+        for vehicle in vehicles:
+            train_demo_trajs.append(demo_trajs[vehicle])
 
     return train_demo_trajs
 

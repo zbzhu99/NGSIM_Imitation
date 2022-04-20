@@ -48,12 +48,16 @@ constants: # These are constant hyperparameters without tunning, and the name is
     save_algorithm: false
 
   env_specs:
-    env_creator: 'smarts'
-    scenario_name: 'ngsim'
-    env_kwargs: {}
+    env_creator: "smarts"
+    scenario_name: "ngsim_i80"
+    env_kwargs:
+      use_rnn: false
+      closest_neighbor_num: 8
+      obs_stack_size: 1
+      feature_type: "radius"
     eval_env_specs:
-      env_num: 30
-      wait_num: 30
+      env_num: 20
+      wait_num: 20
       auto_reset: True
       seed: 24492
 

@@ -23,5 +23,5 @@ constants:
       feature_type: "radius"
       angle_threshold: 1.57
       cutin_dist_threshold: 15.0
-      steps_before_cutin: 500
-      steps_after_cutin: 500
+      steps_before_cutin: 25
+      steps_after_cutin: 25

@@ -17,7 +17,7 @@ from rlkit.torch.common.policies import (
     MakeDeterministic,
 )
 from rlkit.torch.algorithms.dagger.dagger import DAgger
-from smarts_imitation.utils.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicles
 
 
 def experiment(variant):
@@ -48,7 +48,7 @@ def experiment(variant):
     train_split_path = listings[variant["expert_name"]]["train_split"][0]
     with open(train_split_path, "rb") as f:
         # train_vehicle_ids is a OrderedDcit
-        train_vehicle_ids = pickle.load(f)
+        train_vehicles = pickle.load(f)
 
     obs = np.vstack([traj_list[i]["observations"] for i in range(len(traj_list))])
     obs_mean, obs_std = np.mean(obs, axis=0), np.std(obs, axis=0)
@@ -62,7 +62,7 @@ def experiment(variant):
     # print("acts_std:{}".format(acts_std))
 
     env_specs = variant["env_specs"]
-    env = get_env(env_specs, traffic_name=list(train_vehicle_ids.keys())[0])
+    env = get_env(env_specs, traffic_name=list(train_vehicles.keys())[0])
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}".format(env_specs["env_name"]))
@@ -111,12 +111,12 @@ def experiment(variant):
         )
 
     env = env_wrapper(env, **kwargs)
-    train_splitted_vehicle_ids, train_real_env_num = split_vehicle_ids(
-        train_vehicle_ids, env_specs["training_env_specs"]["env_num"]
+    train_splitted_vehicles, train_real_env_num = split_vehicles(
+        train_vehicles, env_specs["training_env_specs"]["env_num"]
     )
     train_env_nums = {
-        traffic_name: len(ids_list)
-        for traffic_name, ids_list in train_splitted_vehicle_ids.items()
+        traffic_name: len(vehicles_list)
+        for traffic_name, vehicles_list in train_splitted_vehicles.items()
     }
     print("training env nums: {}".format(train_env_nums))
     env_specs["training_env_specs"]["env_num"] = train_real_env_num
@@ -126,7 +126,7 @@ def experiment(variant):
     training_env = get_envs(
         env_specs,
         env_wrapper,
-        splitted_vehicle_ids=train_splitted_vehicle_ids,
+        splitted_vehicles=train_splitted_vehicles,
         **kwargs,
     )
     training_env.seed(env_specs["training_env_seed"])

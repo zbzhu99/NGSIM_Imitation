@@ -64,7 +64,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 0.7 
+    alpha: 0.7
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25
@@ -76,7 +76,7 @@ constants:
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "ngsim_i80"
+    scenario_name: "ngsim_us101"
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 8

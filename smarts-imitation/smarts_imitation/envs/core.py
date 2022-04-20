@@ -3,6 +3,7 @@ import numpy as np
 import gym
 from dataclasses import replace
 from collections import deque
+from typing import Dict
 
 from envision.client import Client as Envision
 from smarts.core.smarts import SMARTS
@@ -21,7 +22,7 @@ class SMARTSImitation:
         traffic_name: None,
         action_range: np.ndarray,
         obs_stack_size: int = 1,
-        vehicle_ids: np.ndarray = None,
+        vehicles: Dict = None,
         control_all_vehicles: bool = False,
         control_vehicle_num: int = 1,
         feature_type: str = "radius",
@@ -39,8 +40,9 @@ class SMARTSImitation:
         self.traffic_name = traffic_name
 
         self.control_vehicle_num = self.n_agents = control_vehicle_num
-        self.vehicle_ids = vehicle_ids
-        if vehicle_ids is None:
+        self.vehicles = vehicles
+        # print(self.vehicles)
+        if vehicles is None:
             print("Use All Vehicles")
 
         self.scenarios_iterator = Scenario.scenario_variations(
@@ -52,7 +54,7 @@ class SMARTSImitation:
 
         if self.control_all_vehicles:
             print("Control All Vehicles")
-            assert vehicle_ids is None
+            assert vehicles is None
             # This must be called after self._init_scenario(), otherwise self.vehicle_ids is not initialized.
             self.control_vehicle_num = self.n_agents = len(self.vehicle_ids)
         self.aid_to_vid = {}
@@ -168,6 +170,13 @@ class SMARTSImitation:
                 agent_id
             ].ego_vehicle_state.position
 
+        if self.time_slice:
+            for agent_id in full_obs_n.keys():
+                vehicle_id = self.aid_to_vid[agent_id]
+                if self.smarts.elapsed_sim_time > self.vehicle_end_times[vehicle_id]:
+                    self.done_n[agent_id] = True
+                    print("time slice !!!!!!!!")
+
         return (
             full_obs_n,
             reward_n,
@@ -203,8 +212,9 @@ class SMARTSImitation:
         for agent_id in self.agent_ids:
             vehicle_id = self.aid_to_vid[agent_id]
             agent_interfaces[agent_id] = self.agent_spec.interface
-            if history_start_time > self.vehicle_missions[vehicle_id].start_time:
-                history_start_time = self.vehicle_missions[vehicle_id].start_time
+            history_start_time = min(
+                history_start_time, self.vehicle_start_times[vehicle_id]
+            )
 
         traffic_history_provider.start_time = history_start_time
         ego_missions = {}
@@ -212,8 +222,7 @@ class SMARTSImitation:
             vehicle_id = self.aid_to_vid[agent_id]
             ego_missions[agent_id] = replace(
                 self.vehicle_missions[vehicle_id],
-                start_time=self.vehicle_missions[vehicle_id].start_time
-                - history_start_time,
+                start_time=self.vehicle_start_times[vehicle_id] - history_start_time,
             )
         self.scenario.set_ego_missions(ego_missions)
         self.smarts.switch_ego_agents(agent_interfaces)
@@ -249,18 +258,36 @@ class SMARTSImitation:
         assert self.scenario is not None
 
         self.vehicle_missions = self.scenario.discover_missions_of_traffic_histories()
-        if self.vehicle_ids is None:
-            self.vehicle_ids = np.array(list(self.vehicle_missions.keys()))
+
+        if self.vehicles is None:
+            self.time_slice = False
+            self.vehicle_ids = list(self.vehicle_missions.keys())
+            self.vehicle_start_times = {
+                v_id: self.vehicle_missions[v_id].start_time
+                for v_id in self.vehicle_ids
+            }
+        elif self.vehicles[0].start_time is None:
+            self.time_slice = False
+            self.vehicle_ids = [v.vehicle_id for v in self.vehicles]
+            self.vehicle_start_times = {
+                v_id: self.vehicle_missions[v_id].start_time
+                for v_id in self.vehicle_ids
+            }
+        elif self.vehicles[0].start_time is not None:
+            self.time_slice = True
+            self.vehicle_ids = [v.vehicle_id for v in self.vehicles]
+            self.vehicle_start_times = {
+                v.vehicle_id: v.start_time for v in self.vehicles
+            }
+            self.vehicle_end_times = {v.vehicle_id: v.end_time for v in self.vehicles}
+
         # TODO(zbzhu): Need further discussion here, i.e., how to maintain BOTH randomness and sorted order of vehicles.
         if self.control_vehicle_num == 1:
             np.random.shuffle(self.vehicle_ids)
             self.vehicle_itr = 0
         else:
             # Sort vehicle id by starting time, so that we can get adjacent vehicles easily.
-            vehicle_start_times = [
-                self.vehicle_missions[v_id].start_time for v_id in self.vehicle_ids
-            ]
-            self.vehicle_ids = self.vehicle_ids[np.argsort(vehicle_start_times)]
+            self.vehicle_ids = self.vehicle_ids[np.argsort(self.vehicle_start_times)]
             self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
         self.episode_count = 0
 

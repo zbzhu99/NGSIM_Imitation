@@ -7,7 +7,7 @@ import pickle
 import inspect
 from pathlib import Path
 from multiprocessing import Process, Queue
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -28,6 +28,7 @@ from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.common import _legalize_angle
 from smarts_imitation.utils.feature_group import FeatureGroup
+from smarts_imitation.utils.vehicle_with_time import VehicleWithTime
 
 
 def work_process(
@@ -86,6 +87,7 @@ def work_process(
         obs_stack_size,
         use_rnn,
     )
+    elapsed_sim_time = smarts._elapsed_sim_time
 
     while True:
         """Step in the environment."""
@@ -111,6 +113,7 @@ def work_process(
             obs_stack_size,
             use_rnn,
         )
+        next_elapsed_sim_time = smarts._elapsed_sim_time
         actions = calculate_actions(raw_observations, raw_next_observations)
 
         """ Handle terminated vehicles. """
@@ -126,7 +129,12 @@ def work_process(
                 all_original_paths[vehicle_name][-1]["terminals"] = True
 
                 original_path = all_original_paths.pop(vehicle_name)
-                cutin_demo_traj, cutin_steps = get_single_cutin_demo(
+                (
+                    cutin_demo_traj,
+                    cutin_steps,
+                    start_time,
+                    end_time,
+                ) = get_single_cutin_demo(
                     original_path,
                     angle_threshold,
                     cutin_dist_threshold,
@@ -135,7 +143,15 @@ def work_process(
                 )
                 if cutin_demo_traj is not None:
                     vehicle_id = vehicle.split("-")[-1]
-                    cutin_trajs_queue.put((traffic_name, vehicle_id, cutin_demo_traj))
+                    cutin_trajs_queue.put(
+                        (
+                            traffic_name,
+                            vehicle_id,
+                            start_time,
+                            end_time,
+                            cutin_demo_traj,
+                        )
+                    )
                     traffic_cutin_steps += cutin_steps
                 print(
                     f"Traffic: {traffic_name}: Agent-{vehicle} Ended, "
@@ -160,11 +176,13 @@ def work_process(
                         "terminals": np.array([False]),
                         "raw_observations": raw_observations[vehicle],
                         "raw_next_observations": raw_next_observations[vehicle],
+                        "elapsed_sim_time": elapsed_sim_time,
                     }
                 )
 
         raw_observations = raw_next_observations
         observations = next_observations
+        elapsed_sim_time = next_elapsed_sim_time
 
 
 def sample_cutin_demos(
@@ -210,48 +228,53 @@ def sample_cutin_demos(
 
     # Don not call p.join().
     cutin_demo_trajs = {}
-    cutin_vehicle_ids = defaultdict(list)
+    cutin_vehicles = defaultdict(list)
     while True:  # not reliable
         try:
             if len(cutin_demo_trajs) == 0:
-                traffic_name, vehicle_id, traj = trajs_queue.get(block=True)
+                traffic_name, vehicle_id, start_time, end_time, traj = trajs_queue.get(
+                    block=True
+                )
             else:
-                traffic_name, vehicle_id, traj = trajs_queue.get(
+                traffic_name, vehicle_id, start_time, end_time, traj = trajs_queue.get(
                     block=True, timeout=300
                 )
-            cutin_demo_trajs[(traffic_name, vehicle_id)] = traj
-            cutin_vehicle_ids[traffic_name].append(vehicle_id)
+            vehicle_with_time = VehicleWithTime(
+                vehicle_id=vehicle_id, start_time=start_time, end_time=end_time
+            )
+            cutin_demo_trajs[vehicle_with_time] = traj
+            cutin_vehicles[traffic_name].append(vehicle_with_time)
             print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}")
         except queue.Empty:
             print("Queue empty! stop collecting.")
             break
     print(f"Append to buffer finished! total {len(cutin_demo_trajs)} trajectories!")
 
-    if not os.path.exists(save_path / "cutin_train_ids.pkl") or not os.path.exists(
-        save_path / "cutin_test_ids.pkl"
+    if not os.path.exists(save_path / "cutin_train_vehicles.pkl") or not os.path.exists(
+        save_path / "cutin_test_vehicles.pkl"
     ):
         print(
             "\nSplit training and testing vehicles, with test ratio {}\n".format(
                 test_ratio
             )
         )
-        cutin_train_vehicle_ids, cutin_test_vehicle_ids = split_train_test(
-            cutin_vehicle_ids, test_ratio
+        cutin_train_vehicles, cutin_test_vehicles = split_train_test(
+            cutin_vehicles, test_ratio
         )
 
-        with open(save_path / "cutin_train_ids.pkl", "wb") as f:
-            pickle.dump(cutin_train_vehicle_ids, f)
-        with open(save_path / "cutin_test_ids.pkl", "wb") as f:
-            pickle.dump(cutin_test_vehicle_ids, f)
+        with open(save_path / "cutin_train_vehicles.pkl", "wb") as f:
+            pickle.dump(cutin_train_vehicles, f)
+        with open(save_path / "cutin_test_vehicles.pkl", "wb") as f:
+            pickle.dump(cutin_test_vehicles, f)
 
     else:
-        with open(save_path / "cutin_train_ids.pkl", "rb") as f:
-            cutin_train_vehicle_ids = pickle.load(f)
+        with open(save_path / "cutin_train_vehicles.pkl", "rb") as f:
+            cutin_train_vehicles = pickle.load(f)
 
     cutin_train_demo_trajs = []
-    for traffic_name, vehicle_ids in cutin_train_vehicle_ids.items():
-        for vehicle_id in vehicle_ids:
-            cutin_train_demo_trajs.append(cutin_demo_trajs[(traffic_name, vehicle_id)])
+    for traffic_name, vehicles in cutin_train_vehicles.items():
+        for vehicle in vehicles:
+            cutin_train_demo_trajs.append(cutin_demo_trajs[vehicle])
 
     return cutin_train_demo_trajs
 
@@ -319,8 +342,11 @@ def get_single_cutin_demo(
         original_path, angle_threshold, cutin_dist_threshold
     )
     if len(lane_change_steps) == 0:  # no lane change
-        return None, 0
+        return None, 0, None, None
     cur_path_builder = PathBuilder(["agent_0"])
+
+    start_time = np.inf
+    end_time = -np.inf
     for i in range(len(original_path)):
         if should_be_save(
             i,
@@ -336,8 +362,10 @@ def get_single_cutin_demo(
                 terminals=original_path[i]["terminals"],
             )
             cutin_steps += 1
+            start_time = min(start_time, original_path[i]["elapsed_sim_time"])
+            end_time = max(end_time, original_path[i]["elapsed_sim_time"])
 
-    return cur_path_builder, cutin_steps
+    return cur_path_builder, cutin_steps, start_time, end_time
 
 
 def experiment(specs):
