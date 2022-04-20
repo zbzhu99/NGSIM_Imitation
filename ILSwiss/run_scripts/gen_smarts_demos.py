@@ -272,7 +272,10 @@ def sample_demos(
                     block=True, timeout=100
                 )
             vehicle_with_time = VehicleWithTime(
-                vehicle_id=vehicle_id, start_time=None, end_time=None
+                vehicle_id=vehicle_id,
+                start_time=None,
+                end_time=None,
+                traffic_name=traffic_name,
             )
             demo_trajs[vehicle_with_time] = traj
             scenario_vehicles[traffic_name].append(vehicle_with_time)

@@ -240,7 +240,10 @@ def sample_cutin_demos(
                     block=True, timeout=300
                 )
             vehicle_with_time = VehicleWithTime(
-                vehicle_id=vehicle_id, start_time=start_time, end_time=end_time
+                vehicle_id=vehicle_id,
+                start_time=start_time,
+                end_time=end_time,
+                traffic_name=traffic_name,
             )
             cutin_demo_trajs[vehicle_with_time] = traj
             cutin_vehicles[traffic_name].append(vehicle_with_time)
