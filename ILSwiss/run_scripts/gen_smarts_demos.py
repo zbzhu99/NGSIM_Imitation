@@ -29,6 +29,7 @@ from smarts_imitation.utils.feature_group import FeatureGroup
 from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.vehicle_with_time import VehicleWithTime
+import random
 
 
 def split_train_test(scenario_vehicles, test_ratio):
@@ -40,6 +41,7 @@ def split_train_test(scenario_vehicles, test_ratio):
     test_trajs_num = int(total_trajs_num * test_ratio)
     for traffic_name, vehicles in scenario_vehicles.items():
         if 0 < test_trajs_num < len(vehicles):
+            random.shuffle(vehicles)
             test_vehicles[traffic_name] = vehicles[:test_trajs_num]
             train_vehicles[traffic_name] = vehicles[test_trajs_num:]
             test_trajs_num = 0

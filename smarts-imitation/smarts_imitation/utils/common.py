@@ -226,11 +226,13 @@ class CalObs:
         )
         for i, v in surrounding_vehicles.items():
             if v[0] is None:
-                dist = 15.0
+                # dist = 15.0
+                dist = -5.0
                 heading_vec = [0.0, 0.0]
                 speed = -1.0
             else:
-                dist = min(v[1], 15.0)
+                # dist = min(v[1], 15.0)
+                dist = v[1]
                 heading_rad = _legalize_angle(v[0].heading - ego.heading)
                 heading_vec = radians_to_vec(heading_rad)
                 speed = v[0].speed
