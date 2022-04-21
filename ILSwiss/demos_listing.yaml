@@ -1,7 +1,7 @@
 smarts_i80_radius_stack_1:
   description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
   file_paths: [
-    ./demos/ngsim_i80/smarts_NGSIM-I80_radius_stack-1.pkl
+    ./demos/ngsim_i80/smarts_ngsim_i80_radius_stack-1.pkl
   ]
   eval_split: [
     ./demos/ngsim_i80/test_vehicles.pkl

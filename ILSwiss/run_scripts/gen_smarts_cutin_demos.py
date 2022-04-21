@@ -184,6 +184,8 @@ def work_process(
         observations = next_observations
         elapsed_sim_time = next_elapsed_sim_time
 
+    print(f"worker process: {traffic_name} finished!")
+
 
 def sample_cutin_demos(
     scenarios,
@@ -253,26 +255,14 @@ def sample_cutin_demos(
             break
     print(f"Append to buffer finished! total {len(cutin_demo_trajs)} trajectories!")
 
-    if not os.path.exists(save_path / "cutin_train_vehicles.pkl") or not os.path.exists(
-        save_path / "cutin_test_vehicles.pkl"
-    ):
-        print(
-            "\nSplit training and testing vehicles, with test ratio {}\n".format(
-                test_ratio
-            )
-        )
-        cutin_train_vehicles, cutin_test_vehicles = split_train_test(
-            cutin_vehicles, test_ratio
-        )
+    cutin_train_vehicles, cutin_test_vehicles = split_train_test(
+        cutin_vehicles, test_ratio
+    )
 
-        with open(save_path / "cutin_train_vehicles.pkl", "wb") as f:
-            pickle.dump(cutin_train_vehicles, f)
-        with open(save_path / "cutin_test_vehicles.pkl", "wb") as f:
-            pickle.dump(cutin_test_vehicles, f)
-
-    else:
-        with open(save_path / "cutin_train_vehicles.pkl", "rb") as f:
-            cutin_train_vehicles = pickle.load(f)
+    with open(save_path / "cutin_train_vehicles.pkl", "wb") as f:
+        pickle.dump(cutin_train_vehicles, f)
+    with open(save_path / "cutin_test_vehicles.pkl", "wb") as f:
+        pickle.dump(cutin_test_vehicles, f)
 
     cutin_train_demo_trajs = []
     for traffic_name, vehicles in cutin_train_vehicles.items():

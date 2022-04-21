@@ -285,24 +285,12 @@ def sample_demos(
             break
     print(f"Append to buffer finished! total {len(demo_trajs)} trajectories!")
 
-    if not os.path.exists(save_path / "train_vehicles.pkl") or not os.path.exists(
-        save_path / "test_vehicles.pkl"
-    ):
-        print(
-            "\nSplit training and testing vehicles, with test ratio {}\n".format(
-                test_ratio
-            )
-        )
-        train_vehicles, test_vehicles = split_train_test(scenario_vehicles, test_ratio)
+    train_vehicles, test_vehicles = split_train_test(scenario_vehicles, test_ratio)
 
-        with open(save_path / "train_vehicles.pkl", "wb") as f:
-            pickle.dump(train_vehicles, f)
-        with open(save_path / "test_vehicles.pkl", "wb") as f:
-            pickle.dump(test_vehicles, f)
-
-    else:
-        with open(save_path / "train_vehicles.pkl", "rb") as f:
-            train_vehicles = pickle.load(f)
+    with open(save_path / "train_vehicles.pkl", "wb") as f:
+        pickle.dump(train_vehicles, f)
+    with open(save_path / "test_vehicles.pkl", "wb") as f:
+        pickle.dump(test_vehicles, f)
 
     train_demo_trajs = []
     for traffic_name, vehicles in train_vehicles.items():

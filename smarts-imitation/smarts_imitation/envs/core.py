@@ -282,6 +282,8 @@ class SMARTSImitation:
                 v.vehicle_id: v.start_time for v in self.vehicles
             }
             self.vehicle_end_times = {v.vehicle_id: v.end_time for v in self.vehicles}
+        else:
+            raise NotImplementedError
 
         # TODO(zbzhu): Need further discussion here, i.e., how to maintain BOTH randomness and sorted order of vehicles.
         if self.control_vehicle_num == 1:

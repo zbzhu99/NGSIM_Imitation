@@ -1,6 +1,6 @@
 meta_data:
   script_path: run_scripts/adv_irl_exp_script.py
-  exp_name: gail_smarts_ngsim
+  exp_name: gail_smarts_ngsim_us101
   description: Train an adversarial IRL model
   num_workers: 12 # 64
   using_gpus: true
@@ -33,7 +33,7 @@ constants:
     state_only: false
 
     num_epochs: 100
-    num_steps_per_epoch: 500000
+    num_steps_per_epoch: 200000
     num_steps_between_train_calls: 1000
     max_path_length: 1000
     min_steps_before_training: 5000

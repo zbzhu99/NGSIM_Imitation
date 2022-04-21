@@ -1,6 +1,6 @@
 meta_data:
   script_path: run_scripts/gen_smarts_cutin_demos.py
-  exp_name: gen_smarts_cutin_demos_ngsim
+  exp_name: gen_smarts_cutin_demos_ngsim_us101
   description: Generate cutin demonstrations for imitation learning algorithms
   num_workers: 1
   using_gpus: true
