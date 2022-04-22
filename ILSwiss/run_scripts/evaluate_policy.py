@@ -110,7 +110,9 @@ def experiment(variant):
     for traffics in eval_splitted_vehicles.values():
         # should be ordered.
         for vehicles_lists in traffics.values():
-            eval_car_num.extend([len(x) - env.control_vehicle_num + 1 for x in vehicles_lists])
+            eval_car_num.extend(
+                [len(x) - env.control_vehicle_num + 1 for x in vehicles_lists]
+            )
 
     """ 2. Load Checkpoint Policies """
     # all agents share the same policy

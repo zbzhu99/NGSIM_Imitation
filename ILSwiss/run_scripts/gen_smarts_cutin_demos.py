@@ -370,7 +370,7 @@ def experiment(specs):
         ScenarioZoo.get_scenario(scenario_name) for scenario_name in scenario_names
     ]
     cutin_demo_trajs = sample_cutin_demos(
-        ScenarioZoo.get_scenario(scenarios),
+        scenarios,
         save_path,
         test_ratio=specs["test_ratio"],
         obs_stack_size=specs["env_specs"]["env_kwargs"]["obs_stack_size"],

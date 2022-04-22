@@ -72,7 +72,12 @@ def get_envs(
         for traffic_name, vehicles in traffics.items():
             env_fns.append(
                 lambda s_name=scenario_name, t_name=traffic_name, vs=vehicles: env_wrapper(
-                    env_class(scenario_name=s_name, traffic_name=t_name, vehicles=vs, **env_specs)
+                    env_class(
+                        scenario_name=s_name,
+                        traffic_name=t_name,
+                        vehicles=vs,
+                        **env_specs,
+                    )
                 )
             )
 
