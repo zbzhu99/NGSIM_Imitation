@@ -34,7 +34,9 @@ def experiment(variant):
         train_vehicles = pickle.load(f)
 
     env_specs = variant["env_specs"]
-    env = get_env(env_specs, traffic_name=list(train_vehicles.keys())[0])
+    s_name = list(train_vehicles.keys())[0]
+    t_name = list(train_vehicles[s_name].keys())[0]
+    env = get_env(env_specs, scenario_name=s_name, traffic_name=t_name)
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}".format(env_specs["env_name"]))

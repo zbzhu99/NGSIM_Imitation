@@ -35,88 +35,96 @@ def experiment(variant):
         eval_vehicles = pickle.load(f)
 
     # Can specify vehicle ids to be visualized as follows.
-    for traffic_name, traffic_vehicles in eval_vehicles:
+    for scenario_name, traffics in eval_vehicles.items():
+        for traffic_name, traffic_vehicles in traffics:
 
-        variant["num_vehicles"] = len(traffic_vehicles)
-        print(f"Traffic {traffic_name} Vehicle Num: {len(traffic_vehicles)}")
-        env_specs = variant["env_specs"]
-        if env_specs["env_kwargs"].get("control_all_vehicles", False):
-            traffic_vehicles = None
-        env = get_env(env_specs, traffic_name=traffic_name, vehicles=traffic_vehicles)
-        env.seed(variant["seed"])
+            variant["num_vehicles"] = len(traffic_vehicles)
+            print(f"Traffic {traffic_name} Vehicle Num: {len(traffic_vehicles)}")
+            env_specs = variant["env_specs"]
+            if env_specs["env_kwargs"].get("control_all_vehicles", False):
+                traffic_vehicles = None
+            env = get_env(
+                env_specs,
+                scenario_name=scenario_name,
+                traffic_name=traffic_name,
+                vehicles=traffic_vehicles,
+            )
+            env.seed(variant["seed"])
 
-        print(
-            "\nEnv: {}: {}".format(env_specs["env_creator"], env_specs["scenario_name"])
-        )
-        print("kwargs: {}".format(env_specs["env_kwargs"]))
-        print("Obs Space: {}".format(env.observation_space_n))
-        print("Act Space: {}\n".format(env.action_space_n))
+            print(
+                "\nEnv: {}: {}".format(
+                    env_specs["env_creator"], env_specs["scenario_name"]
+                )
+            )
+            print("kwargs: {}".format(env_specs["env_kwargs"]))
+            print("Obs Space: {}".format(env.observation_space_n))
+            print("Act Space: {}\n".format(env.action_space_n))
 
-        env_wrapper = ProxyEnv  # Identical wrapper
-        for act_space in env.action_space_n.values():
-            if isinstance(act_space, gym.spaces.Box):
-                env_wrapper = NormalizedBoxActEnv
-                break
+            env_wrapper = ProxyEnv  # Identical wrapper
+            for act_space in env.action_space_n.values():
+                if isinstance(act_space, gym.spaces.Box):
+                    env_wrapper = NormalizedBoxActEnv
+                    break
 
-        if variant["scale_env_with_demo_stats"]:
-            with open("demos_listing.yaml", "r") as f:
-                listings = yaml.load(f.read(), Loader=yaml.FullLoader)
-            demos_path = listings[variant["expert_name"]]["file_paths"][
-                variant["expert_idx"]
-            ]
-
-            print("demos_path", demos_path)
-            with open(demos_path, "rb") as f:
-                traj_list = pickle.load(f)
-            if variant["traj_num"] > 0:
-                traj_list = random.sample(traj_list, variant["traj_num"])
-
-            obs = np.vstack(
-                [
-                    traj_list[i][k]["observations"]
-                    for i in range(len(traj_list))
-                    for k in traj_list[i].keys()
+            if variant["scale_env_with_demo_stats"]:
+                with open("demos_listing.yaml", "r") as f:
+                    listings = yaml.load(f.read(), Loader=yaml.FullLoader)
+                demos_path = listings[variant["expert_name"]]["file_paths"][
+                    variant["expert_idx"]
                 ]
-            )
-            obs_mean, obs_std = np.mean(obs, axis=0), np.std(obs, axis=0)
-            print("mean:{}\nstd:{}".format(obs_mean, obs_std))
 
-            _env_wrapper = env_wrapper
-            env_wrapper = lambda *args, **kwargs: ObsScaledEnv(
-                _env_wrapper(*args, **kwargs),
-                obs_mean=obs_mean,
-                obs_std=obs_std,
-            )
+                print("demos_path", demos_path)
+                with open(demos_path, "rb") as f:
+                    traj_list = pickle.load(f)
+                if variant["traj_num"] > 0:
+                    traj_list = random.sample(traj_list, variant["traj_num"])
 
-        env = env_wrapper(env)
-
-        policy = joblib.load(variant["policy_checkpoint"])["policy_0"]["policy"]
-
-        if variant["eval_deterministic"]:
-            policy = MakeDeterministic(policy)
-        policy.to(ptu.device)
-
-        for _ in range(variant["num_vehicles"]):
-            observation_n = env.reset()
-            for step in range(variant["max_path_length"]):
-                stacked_observations = np.stack(
-                    [obs for obs in observation_n.values()], axis=0
+                obs = np.vstack(
+                    [
+                        traj_list[i][k]["observations"]
+                        for i in range(len(traj_list))
+                        for k in traj_list[i].keys()
+                    ]
                 )
-                stacked_actions = policy.get_actions(stacked_observations)
-                action_n = {
-                    a_id: action
-                    for a_id, action in zip(observation_n.keys(), stacked_actions)
-                }
+                obs_mean, obs_std = np.mean(obs, axis=0), np.std(obs, axis=0)
+                print("mean:{}\nstd:{}".format(obs_mean, obs_std))
 
-                next_observation_n, reward_n, terminal_n, env_info_n = env.step(
-                    action_n
+                _env_wrapper = env_wrapper
+                env_wrapper = lambda *args, **kwargs: ObsScaledEnv(
+                    _env_wrapper(*args, **kwargs),
+                    obs_mean=obs_mean,
+                    obs_std=obs_std,
                 )
 
-                for agent_id in terminal_n.keys():
-                    if terminal_n[agent_id]:
-                        car_id = env_info_n[agent_id]["car_id"]
-                        print(f"car {car_id} terminated @ {step}")
-                observation_n = next_observation_n
+            env = env_wrapper(env)
+
+            policy = joblib.load(variant["policy_checkpoint"])["policy_0"]["policy"]
+
+            if variant["eval_deterministic"]:
+                policy = MakeDeterministic(policy)
+            policy.to(ptu.device)
+
+            for _ in range(variant["num_vehicles"]):
+                observation_n = env.reset()
+                for step in range(variant["max_path_length"]):
+                    stacked_observations = np.stack(
+                        [obs for obs in observation_n.values()], axis=0
+                    )
+                    stacked_actions = policy.get_actions(stacked_observations)
+                    action_n = {
+                        a_id: action
+                        for a_id, action in zip(observation_n.keys(), stacked_actions)
+                    }
+
+                    next_observation_n, reward_n, terminal_n, env_info_n = env.step(
+                        action_n
+                    )
+
+                    for agent_id in terminal_n.keys():
+                        if terminal_n[agent_id]:
+                            car_id = env_info_n[agent_id]["car_id"]
+                            print(f"car {car_id} terminated @ {step}")
+                    observation_n = next_observation_n
 
 
 if __name__ == "__main__":

@@ -56,7 +56,9 @@ def experiment(variant):
         eval_vehicles = pickle.load(f)
 
     env_specs = variant["env_specs"]
-    env = get_env(env_specs, traffic_name=list(eval_vehicles.keys())[0])
+    s_name = list(eval_vehicles.keys())[0]
+    t_name = list(eval_vehicles[s_name].keys())[0]
+    env = get_env(env_specs, scenario_name=s_name, traffic_name=t_name)
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}".format(env_specs["env_creator"]))
@@ -158,8 +160,10 @@ def experiment(variant):
         eval_vehicles, env_specs["eval_env_specs"]["env_num"]
     )
     eval_env_nums = {
-        traffic_name: len(vehicles_list)
-        for traffic_name, vehicles_list in eval_splitted_vehicles.items()
+        scenario_name: {
+            traffic_name: len(vehicles) for traffic_name, vehicles in traffics.items()
+        }
+        for scenario_name, traffics in eval_splitted_vehicles.items()
     }
     print("eval env nums: {}".format(eval_env_nums))
     env_specs["eval_env_specs"]["env_num"] = eval_real_env_num
@@ -173,9 +177,10 @@ def experiment(variant):
         **env_specs["eval_env_specs"],
     )
     eval_car_num = []
-    for vehicles_lists in eval_splitted_vehicles.values():
+    for traffics in eval_splitted_vehicles.values():
         # should be ordered.
-        eval_car_num.extend([len(x) for x in vehicles_lists])
+        for vehicles_lists in traffics.values():
+            eval_car_num.extend([len(x) for x in vehicles_lists])
 
     algorithm = BC(
         env=env,

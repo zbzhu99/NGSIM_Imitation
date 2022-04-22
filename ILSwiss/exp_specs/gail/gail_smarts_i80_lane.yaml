@@ -76,7 +76,8 @@ constants:
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "ngsim_i80"
+    scenario_names:
+      - "ngsim_i80"
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 6

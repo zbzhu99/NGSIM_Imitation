@@ -14,7 +14,7 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_i80_radius_stack_1_cutin'
+  expert_name: 'smarts_us101_radius_stack_1_cutin'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
@@ -76,7 +76,8 @@ constants:
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "ngsim_us101"
+    scenario_names:
+      - "ngsim_us101"
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 8

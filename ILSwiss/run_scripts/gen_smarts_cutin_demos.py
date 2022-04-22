@@ -8,6 +8,7 @@ import inspect
 from pathlib import Path
 from multiprocessing import Process, Queue
 from collections import defaultdict
+from functools import partial
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -28,7 +29,7 @@ from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
 from smarts_imitation.utils.common import _legalize_angle
 from smarts_imitation.utils.feature_group import FeatureGroup
-from smarts_imitation.utils.vehicle_with_time import VehicleWithTime
+from smarts_imitation.utils.vehicle_info import VehicleInfo
 
 
 def work_process(
@@ -44,6 +45,7 @@ def work_process(
     steps_after_cutin,
 ):
     all_vehicle_ids = list(scenario.discover_missions_of_traffic_histories().keys())
+    scenario_name = scenario.name
     traffic_name = scenario._traffic_history.name
 
     done_vehicle_num = 0
@@ -143,12 +145,16 @@ def work_process(
                 )
                 if cutin_demo_traj is not None:
                     vehicle_id = vehicle.split("-")[-1]
+                    vehicle_info = VehicleInfo(
+                        vehicle_id=vehicle_id,
+                        start_time=start_time,
+                        end_time=end_time,
+                        scenario_name=scenario_name,
+                        traffic_name=traffic_name,
+                    )
                     cutin_trajs_queue.put(
                         (
-                            traffic_name,
-                            vehicle_id,
-                            start_time,
-                            end_time,
+                            vehicle_info,
                             cutin_demo_traj,
                         )
                     )
@@ -201,12 +207,13 @@ def sample_cutin_demos(
     steps_after_cutin,
 ):
     scenario_iterator = Scenario.scenario_variations(
-        [scenarios], list([]), shuffle_scenarios=False, circular=False
+        scenarios, list([]), shuffle_scenarios=False, circular=False
     )  # scenarios with different traffic histories.
 
     worker_processes = []
     trajs_queue = Queue()  # Queues are process safe.
     for scenario in scenario_iterator:
+        scenario_name = scenario.name
         traffic_name = scenario._traffic_history.name
         p = Process(
             target=work_process,
@@ -224,31 +231,23 @@ def sample_cutin_demos(
             ),
             daemon=True,
         )
-        print(f"Traffic {traffic_name} start sampling.")
+        print(f"Scenario-{scenario_name}, Traffic-{traffic_name} start sampling.")
         p.start()
         worker_processes.append(p)
 
     # Don not call p.join().
     cutin_demo_trajs = {}
-    cutin_vehicles = defaultdict(list)
+    cutin_vehicles = defaultdict(partial(defaultdict, list))
     while True:  # not reliable
         try:
             if len(cutin_demo_trajs) == 0:
-                traffic_name, vehicle_id, start_time, end_time, traj = trajs_queue.get(
-                    block=True
-                )
+                vehicle_info, traj = trajs_queue.get(block=True)
             else:
-                traffic_name, vehicle_id, start_time, end_time, traj = trajs_queue.get(
-                    block=True, timeout=300
-                )
-            vehicle_with_time = VehicleWithTime(
-                vehicle_id=vehicle_id,
-                start_time=start_time,
-                end_time=end_time,
-                traffic_name=traffic_name,
-            )
-            cutin_demo_trajs[vehicle_with_time] = traj
-            cutin_vehicles[traffic_name].append(vehicle_with_time)
+                vehicle_info, traj = trajs_queue.get(block=True, timeout=300)
+            cutin_demo_trajs[vehicle_info] = traj
+            cutin_vehicles[vehicle_info.scenario_name][
+                vehicle_info.traffic_name
+            ].append(vehicle_info)
             print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}")
         except queue.Empty:
             print("Queue empty! stop collecting.")
@@ -259,9 +258,9 @@ def sample_cutin_demos(
         cutin_vehicles, test_ratio
     )
 
-    with open(save_path / "cutin_train_vehicles.pkl", "wb") as f:
+    with open(save_path / "train_vehicles_cutin.pkl", "wb") as f:
         pickle.dump(cutin_train_vehicles, f)
-    with open(save_path / "cutin_test_vehicles.pkl", "wb") as f:
+    with open(save_path / "test_vehicles_cutin.pkl", "wb") as f:
         pickle.dump(cutin_test_vehicles, f)
 
     cutin_train_demo_trajs = []
@@ -362,13 +361,16 @@ def get_single_cutin_demo(
 
 
 def experiment(specs):
-    scenario_name = specs["env_specs"]["scenario_name"]
-    save_path = Path(f"./demos/{scenario_name}")
+    scenario_names = specs["env_specs"]["scenario_names"]
+    save_path = Path(f"./demos/" + "_".join(scenario_names))
     os.makedirs(save_path, exist_ok=True)
 
     # obtain demo paths
+    scenarios = [
+        ScenarioZoo.get_scenario(scenario_name) for scenario_name in scenario_names
+    ]
     cutin_demo_trajs = sample_cutin_demos(
-        ScenarioZoo.get_scenario(scenario_name),
+        ScenarioZoo.get_scenario(scenarios),
         save_path,
         test_ratio=specs["test_ratio"],
         obs_stack_size=specs["env_specs"]["env_kwargs"]["obs_stack_size"],
@@ -388,8 +390,7 @@ def experiment(specs):
     )
 
     file_save_path = Path(save_path).joinpath(
-        "smarts_{}_{}_stack-{}_cutin.pkl".format(
-            specs["env_specs"]["scenario_name"],
+        "smarts_{}_stack-{}_cutin.pkl".format(
             specs["env_specs"]["env_kwargs"]["feature_type"],
             specs["env_specs"]["env_kwargs"]["obs_stack_size"],
         )
