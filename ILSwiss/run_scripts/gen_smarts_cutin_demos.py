@@ -194,7 +194,7 @@ def work_process(
 
 
 def sample_cutin_demos(
-    scenarios,
+    scenarios_paths,
     save_path,
     test_ratio,
     obs_stack_size,
@@ -207,7 +207,7 @@ def sample_cutin_demos(
     steps_after_cutin,
 ):
     scenario_iterator = Scenario.scenario_variations(
-        scenarios, list([]), shuffle_scenarios=False, circular=False
+        scenarios_paths, list([]), shuffle_scenarios=False, circular=False
     )  # scenarios with different traffic histories.
 
     worker_processes = []
@@ -264,10 +264,10 @@ def sample_cutin_demos(
         pickle.dump(cutin_test_vehicles, f)
 
     cutin_train_demo_trajs = []
-    for traffic_name, vehicles in cutin_train_vehicles.items():
-        for vehicle in vehicles:
-            cutin_train_demo_trajs.append(cutin_demo_trajs[vehicle])
-
+    for scenario_name, traffics in cutin_train_vehicles.items():
+        for traffic_name, vehicles in traffics.items():
+            for vehicle in vehicles:
+                cutin_train_demo_trajs.append(cutin_demo_trajs[vehicle])
     return cutin_train_demo_trajs
 
 
@@ -366,11 +366,11 @@ def experiment(specs):
     os.makedirs(save_path, exist_ok=True)
 
     # obtain demo paths
-    scenarios = [
+    scenarios_paths = [
         ScenarioZoo.get_scenario(scenario_name) for scenario_name in scenario_names
     ]
     cutin_demo_trajs = sample_cutin_demos(
-        scenarios,
+        scenarios_paths,
         save_path,
         test_ratio=specs["test_ratio"],
         obs_stack_size=specs["env_specs"]["env_kwargs"]["obs_stack_size"],

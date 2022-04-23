@@ -51,11 +51,6 @@ def experiment(variant):
             )
             env.seed(variant["seed"])
 
-            print(
-                "\nEnv: {}: {}".format(
-                    env_specs["env_creator"], env_specs["scenario_name"]
-                )
-            )
             print("kwargs: {}".format(env_specs["env_kwargs"]))
             print("Obs Space: {}".format(env.observation_space_n))
             print("Act Space: {}\n".format(env.action_space_n))

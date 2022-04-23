@@ -26,7 +26,7 @@ class ScenarioZoo:
 def create_env(scenario_name, traffic_name, **kwargs):
     if scenario_name == "ngsim_i80":
         return SMARTSImitation(
-            scenarios=[ScenarioZoo.get_scenario("ngsim_i80")],
+            scenario_path=ScenarioZoo.get_scenario("ngsim_i80"),
             traffic_name=traffic_name,
             action_range=np.array(
                 [
@@ -38,7 +38,7 @@ def create_env(scenario_name, traffic_name, **kwargs):
         )
     elif scenario_name == "ngsim_us101":
         return SMARTSImitation(
-            scenarios=[ScenarioZoo.get_scenario("ngsim_us101")],
+            scenario_path=ScenarioZoo.get_scenario("ngsim_us101"),
             traffic_name=traffic_name,
             action_range=np.array(
                 [

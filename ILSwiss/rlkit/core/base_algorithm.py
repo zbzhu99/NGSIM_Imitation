@@ -140,7 +140,12 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         self._algo_start_time = None
         self._old_table_keys = None
         self._current_path_builder = [
-            PathBuilder(self.agent_ids) for _ in range(self.training_env_num)
+            PathBuilder(
+                self.agent_ids,
+                self.training_env.sub_envs_info[env_id].scenario_name,
+                self.training_env.sub_envs_info[env_id].traffic_name,
+            )
+            for env_id in range(self.training_env_num)
         ]
         self._exploration_paths = []
 
@@ -173,7 +178,12 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         self._start_new_rollout()
 
         self._current_path_builder = [
-            PathBuilder(self.agent_ids) for _ in range(self.training_env_num)
+            PathBuilder(
+                self.agent_ids,
+                self.training_env.sub_envs_info[env_id].scenario_name,
+                self.training_env.sub_envs_info[env_id].traffic_name,
+            )
+            for env_id in range(self.training_env_num)
         ]
 
         for epoch in gt.timed_for(
@@ -510,7 +520,11 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
             self._n_rollouts_total += 1
             if len(self._current_path_builder[idx]) > 0:
                 self._exploration_paths.append(self._current_path_builder[idx])
-                self._current_path_builder[idx] = PathBuilder(self.agent_ids)
+                self._current_path_builder[idx] = PathBuilder(
+                    self.agent_ids,
+                    self.training_env.sub_envs_info[idx].scenario_name,
+                    self.training_env.sub_envs_info[idx].traffic_name,
+                )
 
     def get_epoch_snapshot(self, epoch):
         """

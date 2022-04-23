@@ -49,7 +49,14 @@ class PathSampler:
             ]
         )
         self._ready_env_ids = np.arange(self.env_num)
-        self.path_builders = [PathBuilder(self.agent_ids) for _ in range(self.env_num)]
+        self.path_builders = [
+            PathBuilder(
+                self.agent_ids,
+                self.vec_env.sub_envs_info[env_id].scenario_name,
+                self.vec_env.sub_envs_info[env_id].traffic_name,
+            )
+            for env_id in range(self.env_num)
+        ]
 
     def obtain_samples(self, num_steps=None, pred_obs=False):
         paths = []
@@ -112,7 +119,11 @@ class PathSampler:
                 if terminal or len(self.path_builders[env_id]) >= self.max_path_length:
                     paths.append(self.path_builders[env_id])
                     total_steps += len(self.path_builders[env_id])
-                    self.path_builders[env_id] = PathBuilder(self.agent_ids)
+                    self.path_builders[env_id] = PathBuilder(
+                        self.agent_ids,
+                        self.vec_env.sub_envs_info[env_id].scenario_name,
+                        self.vec_env.sub_envs_info[env_id].traffic_name,
+                    )
                     env_finished_car_num[env_id] += 1
                     if not terminal or not self.vec_env.auto_reset:
                         self.observations_n[env_id] = self.vec_env.reset(id=env_id)[0]
@@ -203,7 +214,14 @@ class MultiagentPathSampler:
             ]
         )
         self._ready_env_ids = np.arange(self.env_num)
-        self.path_builders = [PathBuilder(self.agent_ids) for _ in range(self.env_num)]
+        self.path_builders = [
+            PathBuilder(
+                self.agent_ids,
+                self.vec_env.sub_envs_info[env_id].scenario_name,
+                self.vec_env.sub_envs_info[env_id].traffic_name,
+            )
+            for env_id in range(self.env_num)
+        ]
 
     def obtain_samples(self, num_steps=None, pred_obs=False):
         paths = []
@@ -281,7 +299,11 @@ class MultiagentPathSampler:
                 ):
                     paths.append(self.path_builders[env_id])
                     total_steps += len(self.path_builders[env_id])
-                    self.path_builders[env_id] = PathBuilder(self.agent_ids)
+                    self.path_builders[env_id] = PathBuilder(
+                        self.agent_ids,
+                        self.vec_env.sub_envs_info[env_id].scenario_name,
+                        self.vec_env.sub_envs_info[env_id].traffic_name,
+                    )
                     env_finished_car_num[env_id] += self.n_agents
                     if terminal != self.n_agents or not self.vec_env.auto_reset:
                         _terminals_all[env_id] = 0

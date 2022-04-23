@@ -2,8 +2,10 @@ import numpy as np
 
 
 class PathBuilder:
-    def __init__(self, agent_ids):
+    def __init__(self, agent_ids, scenario_name=None, traffic_name=None):
         self.agent_ids = agent_ids
+        self.scenario_name = scenario_name
+        self.traffic_name = traffic_name
         self.n_agents = len(agent_ids)
         self.agent_path_builders = {a_id: AgentPathBuilder() for a_id in agent_ids}
 

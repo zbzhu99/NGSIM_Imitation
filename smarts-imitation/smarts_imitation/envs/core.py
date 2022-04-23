@@ -18,7 +18,7 @@ from smarts_imitation.utils.feature_group import FeatureGroup
 class SMARTSImitation:
     def __init__(
         self,
-        scenarios: List[str],
+        scenario_path: str,
         traffic_name: None,
         action_range: np.ndarray,
         obs_stack_size: int = 1,
@@ -45,7 +45,7 @@ class SMARTSImitation:
             print("Use All Vehicles")
 
         self.scenarios_iterator = Scenario.scenario_variations(
-            scenarios, [], shuffle_scenarios=False, circular=False
+            [scenario_path], [], shuffle_scenarios=False, circular=False
         )
         self._init_scenario()
         # Num of all combinations of different controlled vehicles used.
@@ -258,7 +258,7 @@ class SMARTSImitation:
                 self.scenario = scenario
                 break
         assert self.scenario is not None
-
+        self.scenario_name = self.scenario.name
         self.vehicle_missions = self.scenario.discover_missions_of_traffic_histories()
 
         if self.vehicles is None:

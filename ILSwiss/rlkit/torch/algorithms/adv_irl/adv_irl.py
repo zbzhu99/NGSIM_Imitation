@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import rlkit.torch.utils.pytorch_util as ptu
 from rlkit.torch.core import np_to_pytorch_batch
 from rlkit.torch.algorithms.torch_base_algorithm import TorchBaseAlgorithm
+from rlkit.torch.common.loss import BCEFocalLoss
 
 
 class AdvIRL(TorchBaseAlgorithm):
@@ -45,6 +46,7 @@ class AdvIRL(TorchBaseAlgorithm):
         num_disc_updates_per_loop_iter=100,
         num_policy_updates_per_loop_iter=100,
         disc_lr=1e-3,
+        disc_focal_loss_gamma=0.0,
         disc_momentum=0.0,
         disc_optimizer_class=optim.Adam,
         use_grad_pen=True,
@@ -81,9 +83,10 @@ class AdvIRL(TorchBaseAlgorithm):
         }
 
         self.disc_optim_batch_size = disc_optim_batch_size
+        self.disc_focal_loss_gamma = disc_focal_loss_gamma
         print("\n\nDISC MOMENTUM: %f\n\n" % disc_momentum)
 
-        self.bce = nn.BCEWithLogitsLoss()
+        self.bcefocal = BCEFocalLoss(self.disc_focal_loss_gamma)
         self.bce_targets = torch.cat(
             [
                 torch.ones(disc_optim_batch_size, 1),
@@ -91,7 +94,7 @@ class AdvIRL(TorchBaseAlgorithm):
             ],
             dim=0,
         )
-        self.bce.to(ptu.device)
+        self.bcefocal.to(ptu.device)
         self.bce_targets.to(ptu.device)
 
         self.use_grad_pen = use_grad_pen
@@ -176,7 +179,7 @@ class AdvIRL(TorchBaseAlgorithm):
 
         disc_logits = self.discriminator_n[policy_id](disc_input)
         disc_preds = (disc_logits > 0).type(disc_logits.data.type())
-        disc_ce_loss = self.bce(disc_logits, self.bce_targets)
+        disc_ce_loss = self.bcefocal(disc_logits, self.bce_targets)
         accuracy = (disc_preds == self.bce_targets).type(torch.FloatTensor).mean()
 
         if self.use_grad_pen:
@@ -332,6 +335,6 @@ class AdvIRL(TorchBaseAlgorithm):
         return snapshot
 
     def to(self, device):
-        self.bce.to(ptu.device)
+        self.bcefocal.to(ptu.device)
         self.bce_targets = self.bce_targets.to(ptu.device)
         super().to(device)

@@ -53,6 +53,7 @@ constants:
     num_policy_updates_per_loop_iter: 1
 
     disc_lr: 0.0003
+    disc_focal_loss_gamma: 0.0
     disc_momentum: 0.9
     use_grad_pen: true
     # grad_pen_weight: 10.0

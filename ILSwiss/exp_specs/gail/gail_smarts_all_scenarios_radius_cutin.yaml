@@ -9,7 +9,7 @@ variables:
   adv_irl_params:
     grad_pen_weight: [4.0] # [0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
   sac_params:
-    reward_scale: [2.0] # [0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
+    reward_scale: [4.0] # [0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
   seed: [0]
 
 # -----------------------------------------------------------------------------
@@ -20,13 +20,13 @@ constants:
   scale_env_with_demo_stats: true
 
   disc_num_blocks: 2
-  disc_hid_dim: 128
+  disc_hid_dim: 512
   disc_hid_act: tanh
   disc_use_bn: false
   disc_clamp_magnitude: 10.0
 
-  policy_net_size: 256
-  policy_num_hidden_layers: 2
+  policy_net_size: 512
+  policy_num_hidden_layers: 3
 
   adv_irl_params:
     mode: 'gail'
@@ -40,8 +40,8 @@ constants:
 
     eval_deterministic: true
 
-    replay_buffer_size: 300000
-    expert_buffer_size: 2000000
+    replay_buffer_size: 500000
+    expert_buffer_size: 200000
     no_terminal: false
     eval_no_terminal: false
 
@@ -50,6 +50,7 @@ constants:
     num_policy_updates_per_loop_iter: 1
 
     disc_lr: 0.0003
+    disc_focal_loss_gamma: 0.0
     disc_momentum: 0.9
     use_grad_pen: true
     disc_optim_batch_size: 256
@@ -86,7 +87,7 @@ constants:
       feature_type: "radius"
     training_env_specs:
       env_num: 20
-      wait_num: 10
+      wait_num: 20
       auto_reset: True
       seed: 24491
     eval_env_specs:

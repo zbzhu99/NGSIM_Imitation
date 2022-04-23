@@ -6,7 +6,7 @@ import queue
 import pickle
 import inspect
 from pathlib import Path
-from collections import deque, OrderedDict, defaultdict
+from collections import deque, defaultdict
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -40,6 +40,7 @@ def split_train_test(scenario_vehicles, test_ratio):
     test_vehicles = defaultdict(partial(defaultdict, list))
 
     for scenario_name, traffics in scenario_vehicles.items():
+        # split a test set for each scenario individually.
         scenario_total_trajs_num = sum([len(x) for x in traffics.values()])
         scenario_test_trajs_num = int(scenario_total_trajs_num * test_ratio)
         for traffic_name, vehicles in traffics.items():
@@ -244,7 +245,9 @@ def work_process(
         for vehicle in vehicles:
             if vehicle.split("-")[-1] in all_vehicle_ids and vehicle in observations:
                 if vehicle not in path_builders:
-                    path_builders[vehicle] = PathBuilder(["agent_0"])
+                    path_builders[vehicle] = PathBuilder(
+                        ["agent_0"], scenario_name, traffic_name
+                    )
 
                 path_builders[vehicle]["agent_0"].add_all(
                     observations=observations[vehicle],
@@ -261,7 +264,7 @@ def work_process(
 
 
 def sample_demos(
-    scenarios,
+    scenarios_paths,
     save_path,
     test_ratio,
     obs_stack_size,
@@ -270,7 +273,7 @@ def sample_demos(
     use_rnn,
 ):
     scenario_iterator = Scenario.scenario_variations(
-        scenarios, list([]), shuffle_scenarios=False, circular=False
+        scenarios_paths, list([]), shuffle_scenarios=False, circular=False
     )  # scenarios with different traffic histories.
 
     trajs_queue = Queue()  # Queues are process safe.
@@ -319,9 +322,10 @@ def sample_demos(
         pickle.dump(test_vehicles, f)
 
     train_demo_trajs = []
-    for traffic_name, vehicles in train_vehicles.items():
-        for vehicle in vehicles:
-            train_demo_trajs.append(demo_trajs[vehicle])
+    for scenario_name, traffics in train_vehicles.items():
+        for traffic_name, vehicles in traffics.items():
+            for vehicle in vehicles:
+                train_demo_trajs.append(demo_trajs[vehicle])
 
     return train_demo_trajs
 
@@ -333,11 +337,11 @@ def experiment(specs):
     os.makedirs(save_path, exist_ok=True)
 
     # obtain demo paths
-    scenarios = [
+    scenarios_paths = [
         ScenarioZoo.get_scenario(scenario_name) for scenario_name in scenario_names
     ]
     demo_trajs = sample_demos(
-        scenarios,
+        scenarios_paths,
         save_path,
         specs["test_ratio"],
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],

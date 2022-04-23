@@ -1,6 +1,6 @@
 from typing import Dict, Callable, Any
 from gym import Env
-import numpy as np
+from collections import namedtuple
 
 from rlkit.env_creators import get_env_cls
 from rlkit.envs.wrappers import ProxyEnv
@@ -11,6 +11,8 @@ __all__ = [
     "DummyVectorEnv",
     "SubprocVectorEnv",
 ]
+
+SubEnvInfo = namedtuple("SubEnvInfo", ["scenario_name", "traffic_name"])
 
 
 def get_env(env_specs, scenario_name, traffic_name, vehicles=None):
@@ -68,6 +70,8 @@ def get_envs(
         print("Unknown env name: {}".format(env_specs["env_creator"]))
 
     env_fns = []
+    sub_envs_info = {}
+    env_id = 0
     for scenario_name, traffics in splitted_vehicles.items():
         for traffic_name, vehicles in traffics.items():
             env_fns.append(
@@ -80,6 +84,10 @@ def get_envs(
                     )
                 )
             )
+            sub_envs_info[env_id] = SubEnvInfo(
+                scenario_name=scenario_name, traffic_name=traffic_name
+            )
+            env_id += 1
 
     if env_num == 1:
         print("\n WARNING: Single environment detected, wrap to DummyVectorEnv.\n")
@@ -94,4 +102,5 @@ def get_envs(
         )
 
     envs.seed(seed)
+    envs.sub_envs_info = sub_envs_info
     return envs

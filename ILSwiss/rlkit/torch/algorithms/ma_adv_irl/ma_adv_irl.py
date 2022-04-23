@@ -14,6 +14,7 @@ import rlkit.torch.utils.pytorch_util as ptu
 from rlkit.torch.core import np_to_pytorch_batch
 from rlkit.torch.algorithms.torch_base_algorithm import TorchBaseAlgorithm
 from rlkit.data_management.path_builder import PathBuilder
+from rlkit.torch.common.loss import BCEFocalLoss
 
 
 class MAAdvIRL(TorchBaseAlgorithm):
@@ -50,6 +51,7 @@ class MAAdvIRL(TorchBaseAlgorithm):
         num_disc_updates_per_loop_iter=100,
         num_policy_updates_per_loop_iter=100,
         disc_lr=1e-3,
+        disc_focal_loss_gamma=0.0,
         disc_momentum=0.0,
         disc_optimizer_class=optim.Adam,
         use_grad_pen=True,
@@ -71,6 +73,7 @@ class MAAdvIRL(TorchBaseAlgorithm):
 
         self.expert_replay_buffer = expert_replay_buffer
 
+        self.disc_focal_loss_gamma = disc_focal_loss_gamma
         self.default_policy_name = default_policy_name
         self.policy_trainer_n = policy_trainer_n
         self.policy_optim_batch_size = policy_optim_batch_size
@@ -89,7 +92,7 @@ class MAAdvIRL(TorchBaseAlgorithm):
         self.disc_optim_batch_size = disc_optim_batch_size
         print("\n\nDISC MOMENTUM: %f\n\n" % disc_momentum)
 
-        self.bce = nn.BCEWithLogitsLoss()
+        self.bcefocal = BCEFocalLoss(self.disc_focal_loss_gamma)
         self.bce_targets = torch.cat(
             [
                 torch.ones(disc_optim_batch_size, 1),
@@ -97,7 +100,7 @@ class MAAdvIRL(TorchBaseAlgorithm):
             ],
             dim=0,
         )
-        self.bce.to(ptu.device)
+        self.bcefocal.to(ptu.device)
         self.bce_targets.to(ptu.device)
 
         self.use_grad_pen = use_grad_pen
@@ -127,7 +130,12 @@ class MAAdvIRL(TorchBaseAlgorithm):
         # self._start_new_rollout()  # Do it for support vec env
 
         self._current_path_builder = [
-            PathBuilder(self.agent_ids) for _ in range(self.training_env_num)
+            PathBuilder(
+                self.agent_ids,
+                self.training_env.sub_envs_info[env_id].scenario_name,
+                self.training_env.sub_envs_info[env_id].traffic_name,
+            )
+            for env_id in range(self.training_env_num)
         ]
         self.n_agents = self.env.n_agents
         _terminals_all = np.zeros((self.training_env_num), dtype=int)
@@ -371,7 +379,7 @@ class MAAdvIRL(TorchBaseAlgorithm):
 
         disc_logits = self.discriminator_n[policy_id](disc_input)
         disc_preds = (disc_logits > 0).type(disc_logits.data.type())
-        disc_ce_loss = self.bce(disc_logits, self.bce_targets)
+        disc_ce_loss = self.bcefocal(disc_logits, self.bce_targets)
         accuracy = (disc_preds == self.bce_targets).type(torch.FloatTensor).mean()
 
         if self.use_grad_pen:
@@ -525,6 +533,6 @@ class MAAdvIRL(TorchBaseAlgorithm):
         return snapshot
 
     def to(self, device):
-        self.bce.to(ptu.device)
+        self.bcefocal.to(ptu.device)
         self.bce_targets = self.bce_targets.to(ptu.device)
         super().to(device)

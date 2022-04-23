@@ -21,7 +21,6 @@ def split_vehicles(scenario_vehicles, env_num):
         real_env_num: real env num to be splitted to.
     Returns
     """
-    # splitted_vehicles = OrderedDict()
     splitted_vehicles = defaultdict(partial(defaultdict, list))
     total_vehicle_num = sum(
         [
@@ -39,4 +38,5 @@ def split_vehicles(scenario_vehicles, env_num):
             real_env_num += traffic_env_num
             splitted_vehicles[scenario_name][traffic_name] = vehicles_lists
 
+    splitted_vehicles = to_ordered_dict(splitted_vehicles)
     return splitted_vehicles, real_env_num
