@@ -113,6 +113,10 @@ def experiment(variant):
             eval_car_num.extend(
                 [len(x) - env.control_vehicle_num + 1 for x in vehicles_lists]
             )
+    eval_car_num = [
+        eval_env.sub_envs_info[env_id].vehicle_num - env.control_vehicle_num + 1
+        for env_id in range(eval_real_env_num)
+    ]
 
     """ 2. Load Checkpoint Policies """
     # all agents share the same policy

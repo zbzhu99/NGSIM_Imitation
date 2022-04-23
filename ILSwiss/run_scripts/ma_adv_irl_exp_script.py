@@ -258,11 +258,10 @@ def experiment(variant):
         splitted_vehicles=eval_splitted_vehicles,
         **env_specs["eval_env_specs"],
     )
-    eval_car_num = []
-    for traffics in eval_splitted_vehicles.values():
-        # should be ordered.
-        for vehicles_lists in traffics.values():
-            eval_car_num.extend([len(x) for x in vehicles_lists])
+    eval_car_num = [
+        eval_env.sub_envs_info[env_id].vehicle_num
+        for env_id in range(eval_real_env_num)
+    ]
 
     variant["adv_irl_params"]["eval_sampler_func"] = MultiagentPathSampler
 

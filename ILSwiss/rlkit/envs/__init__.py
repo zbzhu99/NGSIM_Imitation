@@ -12,7 +12,7 @@ __all__ = [
     "SubprocVectorEnv",
 ]
 
-SubEnvInfo = namedtuple("SubEnvInfo", ["scenario_name", "traffic_name"])
+SubEnvInfo = namedtuple("SubEnvInfo", ["scenario_name", "traffic_name", "vehicle_num"])
 
 
 def get_env(env_specs, scenario_name, traffic_name, vehicles=None):
@@ -73,21 +73,24 @@ def get_envs(
     sub_envs_info = {}
     env_id = 0
     for scenario_name, traffics in splitted_vehicles.items():
-        for traffic_name, vehicles in traffics.items():
-            env_fns.append(
-                lambda s_name=scenario_name, t_name=traffic_name, vs=vehicles: env_wrapper(
-                    env_class(
-                        scenario_name=s_name,
-                        traffic_name=t_name,
-                        vehicles=vs,
-                        **env_specs,
+        for traffic_name, vehicles_lists in traffics.items():
+            for vehicles in vehicles_lists:
+                env_fns.append(
+                    lambda s_name=scenario_name, t_name=traffic_name, vs=vehicles: env_wrapper(
+                        env_class(
+                            scenario_name=s_name,
+                            traffic_name=t_name,
+                            vehicles=vs,
+                            **env_specs,
+                        )
                     )
                 )
-            )
-            sub_envs_info[env_id] = SubEnvInfo(
-                scenario_name=scenario_name, traffic_name=traffic_name
-            )
-            env_id += 1
+                sub_envs_info[env_id] = SubEnvInfo(
+                    scenario_name=scenario_name,
+                    traffic_name=traffic_name,
+                    vehicle_num=len(vehicles),
+                )
+                env_id += 1
 
     if env_num == 1:
         print("\n WARNING: Single environment detected, wrap to DummyVectorEnv.\n")

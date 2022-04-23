@@ -243,7 +243,7 @@ def sample_cutin_demos(
             if len(cutin_demo_trajs) == 0:
                 vehicle_info, traj = trajs_queue.get(block=True)
             else:
-                vehicle_info, traj = trajs_queue.get(block=True, timeout=300)
+                vehicle_info, traj = trajs_queue.get(block=True, timeout=600)
             cutin_demo_trajs[vehicle_info] = traj
             cutin_vehicles[vehicle_info.scenario_name][
                 vehicle_info.traffic_name

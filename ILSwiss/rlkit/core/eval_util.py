@@ -54,15 +54,17 @@ class ScenarioStats:
             for scenario_name, s_total_count in scenarios.items():
                 if s_total_count == 0:
                     success_rate[a_id][scenario_name] = None
-                success_rate[a_id][scenario_name] = (
-                    self.scenario_win_count[a_id][scenario_name] / s_total_count
-                )
+                else:
+                    success_rate[a_id][scenario_name] = (
+                        self.scenario_win_count[a_id][scenario_name] / s_total_count
+                    )
             all_total_count = self.all_scenarios_total_count[a_id]
             if all_total_count == 0:
                 success_rate[a_id]["all"] = None
-            success_rate[a_id]["all"] = (
-                self.all_scenarios_win_count[a_id] / all_total_count
-            )
+            else:
+                success_rate[a_id]["all"] = (
+                    self.all_scenarios_win_count[a_id] / all_total_count
+                )
         return success_rate
 
     @property
@@ -72,15 +74,18 @@ class ScenarioStats:
             for scenario_name, s_total_count in scenarios.items():
                 if s_total_count == 0:
                     collision_rate[a_id][scenario_name] = None
-                collision_rate[a_id][scenario_name] = (
-                    self.scenario_collision_count[a_id][scenario_name] / s_total_count
-                )
+                else:
+                    collision_rate[a_id][scenario_name] = (
+                        self.scenario_collision_count[a_id][scenario_name]
+                        / s_total_count
+                    )
             all_total_count = self.all_scenarios_total_count[a_id]
             if all_total_count == 0:
                 collision_rate[a_id]["all"] = None
-            collision_rate[a_id]["all"] = (
-                self.all_scenarios_collision_count[a_id] / all_total_count
-            )
+            else:
+                collision_rate[a_id]["all"] = (
+                    self.all_scenarios_collision_count[a_id] / all_total_count
+                )
         return collision_rate
 
 

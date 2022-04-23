@@ -32,6 +32,9 @@ constants:
     mode: 'gail'
     state_only: false
 
+    best_key: "Test agent_0 all Collision Rate"
+    best_criterion: "smallest"
+
     num_epochs: 100
     num_steps_per_epoch: 500000
     num_steps_between_train_calls: 1000
