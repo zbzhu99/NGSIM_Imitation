@@ -10,12 +10,12 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_i80_radius_stack_1'
+  expert_name: 'smarts_i80_radius_stack_1_cutin'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
 
-  log_path: "/home/liuyuecheng/i80_fixbug_result/buf2M_dis64x2_policy_512x3_r2_alpha1"
+  log_path: "logs/gail-smarts-ngsim--scale--terminal--gp-4.0--rs-2.0--trajnum--1/gail_smarts_ngsim--scale--terminal--gp-4.0--rs-2.0--trajnum--1_2022_03_18_09_27_17_0000--s-0"
 
   eval_deterministic: true
 
@@ -27,9 +27,9 @@ constants:
       - "ngsim_i80"
     env_kwargs:
       feature_type: "radius"
-      closest_neighbor_num: 8
+      closest_neighbor_num: 1
       control_all_vehicles: False
-      control_vehicle_num: 1
+      control_vehicle_num: 10
       envision: True
       envision_sim_name: "gail_i80"
       envision_record_data_replay_path: "./envision_output"

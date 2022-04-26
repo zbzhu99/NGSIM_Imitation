@@ -13,6 +13,19 @@ from smarts.core.traffic_history_provider import TrafficHistoryProvider
 from smarts_imitation.utils import agent
 from smarts_imitation.utils.common import subscribe_features
 from smarts_imitation.utils.feature_group import FeatureGroup
+from smarts.core.utils.math import rounder_for_dt
+from smarts_imitation.utils.vehicle_info import VehiclePosition
+from smarts.core.plan import (
+    EndlessGoal,
+    LapMission,
+    Mission,
+    PositionalGoal,
+    Start,
+    TraverseGoal,
+    VehicleSpec,
+    Via,
+    default_entry_tactic,
+)
 
 
 class SMARTSImitation:
@@ -157,6 +170,7 @@ class SMARTSImitation:
 
         info_n = {}
         for agent_id in full_obs_n.keys():
+            vehicle_id = self.aid_to_vid[agent_id]
             info_n[agent_id] = {}
             info_n[agent_id]["reached_goal"] = raw_observation_n[
                 agent_id
@@ -165,17 +179,45 @@ class SMARTSImitation:
                 len(raw_observation_n[agent_id].events.collisions) > 0
             )
             info_n[agent_id]["car_id"] = self.aid_to_vid[agent_id]
-            info_n[agent_id]["raw_position"] = raw_observation_n[
+            info_n[agent_id]["lane_index"] = raw_observation_n[
                 agent_id
-            ].ego_vehicle_state.position
+            ].ego_vehicle_state.lane_index
+            raw_position = raw_observation_n[agent_id].ego_vehicle_state.position
+            info_n[agent_id]["raw_position"] = raw_position
+
+            hist_cur_position = self._get_vehicle_current_history_position(vehicle_id)
+
+            if hist_cur_position is None:
+                dist_to_hist_cur_pos = None
+            else:
+                dist_to_hist_cur_pos = np.linalg.norm(
+                    [
+                        raw_position[0] - hist_cur_position.position_x,
+                        raw_position[1],
+                        hist_cur_position.position_y,
+                    ]
+                )
+            info_n[agent_id]["dist_to_hist_cur_pos"] = dist_to_hist_cur_pos
+
+            history_final_pos = self.vehicle_final_positions[vehicle_id]
+            dist_to_hist_final_pos = np.linalg.norm(
+                [
+                    raw_position[0] - history_final_pos.position_x,
+                    raw_position[1],
+                    history_final_pos.position_y,
+                ]
+            )
+            info_n[agent_id]["dist_to_hist_final_pos"] = dist_to_hist_final_pos
 
         if self.time_slice:
             for agent_id in full_obs_n.keys():
                 vehicle_id = self.aid_to_vid[agent_id]
-                if (
-                    self.smarts.elapsed_sim_time
-                    > self.vehicle_end_times[vehicle_id] - self.history_start_time
-                ):
+                # if (
+                #     self.smarts.elapsed_sim_time
+                #     > self.vehicle_end_times[vehicle_id] - self.history_start_time
+                # ):
+                #     self.done_n[agent_id] = True
+                if self.smarts.elapsed_sim_time > self.vehicle_end_times[vehicle_id]:
                     self.done_n[agent_id] = True
 
         return (
@@ -184,6 +226,56 @@ class SMARTSImitation:
             self.done_n,
             info_n,
         )
+
+    def _vehicle_pos_between(self, vehicle_id: str, start_time: float, end_time: float):
+        """Find the vehicle states between the given history times."""
+        query = """SELECT T.position_x, T.position_y, T.sim_time
+                   FROM Trajectory AS T
+                   WHERE T.vehicle_id = ? AND T.sim_time > ? AND T.sim_time <= ? 
+                   ORDER BY T.sim_time DESC"""
+        rows = self.scenario._traffic_history._query_list(
+            query, (vehicle_id, start_time, end_time)
+        )
+        return (VehiclePosition(*row) for row in rows)
+
+    def _ordered_vehicle_trajectory(self, vehicle_id):
+        query = """SELECT T.position_x, T.position_y
+                   FROM Trajectory AS T
+                   WHERE T.vehicle_id = ?
+                   ORDER BY T.sim_time DESC"""
+        rows = self.scenario._traffic_history._query_list(query, (vehicle_id,))
+        return (VehiclePosition(*row) for row in rows)
+
+    def _get_vehicle_current_history_position(self, vehicle_id):
+        rounder = rounder_for_dt(self.smarts._last_dt)
+        history_time = rounder(self.smarts.elapsed_sim_time)
+        prev_time = rounder(history_time - self.smarts._last_dt)
+
+        rows = self._vehicle_pos_between(vehicle_id, prev_time, history_time)
+        rows = list(rows)
+        if len(rows) == 0:
+            print(
+                f"Warning: can't get current vehicle history position: id {vehicle_id}"
+            )
+            return None
+        else:
+            return rows[0]
+
+    def _get_vehicle_final_history_position(self, vehicle_id):
+        if self.time_slice:
+            rounder = rounder_for_dt(self.smarts._last_dt)
+            end_time = rounder(self.vehicle_end_times[vehicle_id])
+            start_time = end_time - self.smarts._last_dt
+            rows = self._vehicle_pos_between(vehicle_id, start_time, end_time)
+            rows = list(rows)
+            assert len(rows) > 0, f"final rows: {rows}"
+            return rows[0]
+        else:
+            rows = self.scenario._traffic_history.vehicle_trajectory(vehicle_id)
+            rows = list(rows)
+            assert len(rows) > 0
+            final_position = VehiclePosition(*rows[-1])
+            return final_position
 
     def reset(self):
         if self.episode_count == self.episode_num:
@@ -196,10 +288,10 @@ class SMARTSImitation:
         if self.vehicle_itr + self.n_agents > len(self.vehicle_ids):
             self.vehicle_itr = 0
 
-        traffic_history_provider = self.smarts.get_provider_by_type(
+        self.traffic_history_provider = self.smarts.get_provider_by_type(
             TrafficHistoryProvider
         )
-        assert traffic_history_provider
+        assert self.traffic_history_provider
         self.active_vehicle_ids = self.vehicle_ids[
             self.vehicle_itr : self.vehicle_itr + self.n_agents
         ]
@@ -216,9 +308,19 @@ class SMARTSImitation:
             self.history_start_time = min(
                 self.history_start_time, self.vehicle_start_times[vehicle_id]
             )
-
-        traffic_history_provider.start_time = self.history_start_time
+        # self.traffic_history_provider.start_time = self.history_start_time
         self.ego_missions = {}
+        # for agent_id in self.agent_ids:
+        #     vehicle_id = self.aid_to_vid[agent_id]
+        #     self.ego_missions[agent_id] = replace(
+        #         self.vehicle_missions[vehicle_id],
+        #         start_time=self.vehicle_start_times[vehicle_id]
+        #         - self.history_start_time,
+        #     )
+
+        if self.time_slice and not hasattr(self, "vehicle_missions"):
+            self.vehicle_missions = self._discover_sliced_vehicle_missions()
+
         for agent_id in self.agent_ids:
             vehicle_id = self.aid_to_vid[agent_id]
             self.ego_missions[agent_id] = replace(
@@ -226,10 +328,15 @@ class SMARTSImitation:
                 start_time=self.vehicle_start_times[vehicle_id]
                 - self.history_start_time,
             )
+            # self.ego_missions[agent_id] = self.vehicle_missions[vehicle_id]
+
         self.scenario.set_ego_missions(self.ego_missions)
         self.smarts.switch_ego_agents(agent_interfaces)
 
-        raw_observation_n = self.smarts.reset(self.scenario)
+        # raw_observation_n = self.smarts.reset(self.scenario)
+        raw_observation_n = self.smarts.reset(
+            self.scenario, start_time=self.history_start_time
+        )
         full_obs_n = self._convert_obs(raw_observation_n)
         if self.obs_stack_size > 1:
             for agent_id in full_obs_n.keys():
@@ -246,10 +353,48 @@ class SMARTSImitation:
                         axis=-1,
                     )
 
+        self.vehicle_final_positions = {
+            vehicle_id: self._get_vehicle_final_history_position(vehicle_id)
+            for vehicle_id in self.active_vehicle_ids
+        }
+
         self.done_n = {a_id: False for a_id in self.agent_ids}
         self.vehicle_itr += 1
         self.episode_count += 1
         return full_obs_n
+
+    def _discover_sliced_vehicle_missions(self):
+        """Retrieves the missions of traffic history vehicles."""
+        vehicle_missions = {}
+        for vehicle_id in self.vehicle_ids:
+            start_time = self.vehicle_start_times[vehicle_id]
+            rows = self._vehicle_pos_between(
+                vehicle_id,
+                start_time=start_time - self.smarts._last_dt,
+                end_time=start_time,
+            )
+            rows = list(rows)
+            assert len(rows) > 0, rows
+            sim_time = rows[0].sim_time
+            start, speed = self.scenario.get_vehicle_start_at_time(vehicle_id, sim_time)
+            entry_tactic = default_entry_tactic(speed)
+            veh_config_type = self.scenario._traffic_history.vehicle_config_type(
+                vehicle_id
+            )
+            veh_dims = self.scenario._traffic_history.vehicle_dims(vehicle_id)
+            vehicle_missions[vehicle_id] = Mission(
+                start=start,
+                entry_tactic=entry_tactic,
+                goal=TraverseGoal(self.scenario.road_map),
+                start_time=sim_time,
+                vehicle_spec=VehicleSpec(
+                    veh_id=vehicle_id,
+                    veh_config_type=veh_config_type,
+                    dimensions=veh_dims,
+                ),
+            )
+
+        return vehicle_missions
 
     def _init_scenario(self):
         self.scenario = None
@@ -259,10 +404,12 @@ class SMARTSImitation:
                 break
         assert self.scenario is not None
         self.scenario_name = self.scenario.name
-        self.vehicle_missions = self.scenario.discover_missions_of_traffic_histories()
 
         if self.vehicles is None:
             self.time_slice = False
+            self.vehicle_missions = (
+                self.scenario.discover_missions_of_traffic_histories()
+            )
             self.vehicle_ids = list(self.vehicle_missions.keys())
             self.vehicle_start_times = {
                 v_id: self.vehicle_missions[v_id].start_time
@@ -270,6 +417,9 @@ class SMARTSImitation:
             }
         elif self.vehicles[0].start_time is None:
             self.time_slice = False
+            self.vehicle_missions = (
+                self.scenario.discover_missions_of_traffic_histories()
+            )
             self.vehicle_ids = [v.vehicle_id for v in self.vehicles]
             self.vehicle_start_times = {
                 v_id: self.vehicle_missions[v_id].start_time
@@ -293,6 +443,7 @@ class SMARTSImitation:
             # Sort vehicle id by starting time, so that we can get adjacent vehicles easily.
             self.vehicle_ids = self.vehicle_ids[np.argsort(self.vehicle_start_times)]
             self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
+
         self.episode_count = 0
 
     def destroy(self):

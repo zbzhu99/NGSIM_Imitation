@@ -20,7 +20,7 @@ constants:
   scale_env_with_demo_stats: true
 
   disc_num_blocks: 2
-  disc_hid_dim: 512
+  disc_hid_dim: 64
   disc_hid_act: tanh
   disc_use_bn: false
   disc_clamp_magnitude: 10.0
@@ -36,7 +36,7 @@ constants:
     best_criterion: "smallest"
 
     num_epochs: 100
-    num_steps_per_epoch: 200000
+    num_steps_per_epoch: 2000
     num_steps_between_train_calls: 1000
     max_path_length: 1000
     min_steps_before_training: 5000
@@ -68,7 +68,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 0.7 
+    alpha: 1.0
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25

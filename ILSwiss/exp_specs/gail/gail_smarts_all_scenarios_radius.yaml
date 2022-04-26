@@ -68,8 +68,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 0.7
-    discount: 0.99
+    alpha: 1.0
     soft_target_tau: 0.005
     beta_1: 0.25
     policy_lr: 0.0003
@@ -90,7 +89,7 @@ constants:
       feature_type: "radius"
     training_env_specs:
       env_num: 20
-      wait_num: 20
+      wait_num: 10
       auto_reset: True
       seed: 24491
     eval_env_specs:

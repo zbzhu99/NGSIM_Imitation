@@ -68,7 +68,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 0.7 
+    alpha: 1.0
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25

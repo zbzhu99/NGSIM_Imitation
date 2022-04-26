@@ -10,7 +10,7 @@ variables: # If you want to do grid search, take the constant variables to here 
 
 # -----------------------------------------------------------------------------
 constants: # These are constant hyperparameters without tunning, and the name is defined by your algorithm, however there are many common hyperparameters
-  expert_name: 'smarts_ngsim'
+  expert_name: 'smarts_i80_radius_stack_1'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
@@ -49,7 +49,8 @@ constants: # These are constant hyperparameters without tunning, and the name is
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "ngsim_i80"
+    scenario_names:
+      - "ngsim_i80"
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 8

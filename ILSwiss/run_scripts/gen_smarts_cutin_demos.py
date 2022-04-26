@@ -357,6 +357,9 @@ def get_single_cutin_demo(
             start_time = min(start_time, original_path[i]["elapsed_sim_time"])
             end_time = max(end_time, original_path[i]["elapsed_sim_time"])
 
+    if end_time - start_time < 0.5:
+        return None, 0, None, None
+
     return cur_path_builder, cutin_steps, start_time, end_time
 
 

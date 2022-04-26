@@ -36,7 +36,7 @@ def experiment(variant):
 
     # Can specify vehicle ids to be visualized as follows.
     for scenario_name, traffics in eval_vehicles.items():
-        for traffic_name, traffic_vehicles in traffics:
+        for traffic_name, traffic_vehicles in traffics.items():
 
             variant["num_vehicles"] = len(traffic_vehicles)
             print(f"Traffic {traffic_name} Vehicle Num: {len(traffic_vehicles)}")
@@ -119,6 +119,9 @@ def experiment(variant):
                         if terminal_n[agent_id]:
                             car_id = env_info_n[agent_id]["car_id"]
                             print(f"car {car_id} terminated @ {step}")
+                    if np.all(list(terminal_n.values())):
+                        print(f"terminal_n: {terminal_n}, env_info_n: {env_info_n}")
+                        break
                     observation_n = next_observation_n
 
 
@@ -140,14 +143,14 @@ if __name__ == "__main__":
     exp_id = exp_specs["exp_id"]
     exp_prefix = exp_specs["exp_name"]
 
-    pkl_name = "params.pkl"
+    pkl_name = "best.pkl"
     exp_specs["policy_checkpoint"] = os.path.join(exp_specs["log_path"], pkl_name)
     exp_specs["video_path"] = os.path.join(exp_specs["log_path"], "videos")
     if not os.path.exists(exp_specs["video_path"]):
         os.mkdir(exp_specs["video_path"])
 
     envision_proc = Popen(
-        f"scl envision start -s {ScenarioZoo.get_scenario('NGSIM-I80')} -p 8081",
+        f"scl envision start -s {ScenarioZoo.get_scenario('ngsim_i80')} -p 8081",
         shell=True,
         preexec_fn=os.setsid,
     )
