@@ -172,7 +172,7 @@ def get_generic_path_information(paths, env, stat_prefix=""):
     success_rate_n = scenario_stats.get_stats("success_rate")
     collision_rate_n = scenario_stats.get_stats("collision_rate")
     dist_to_hist_cur_pos_sum_n = scenario_stats.get_stats("dist_to_hist_cur_pos_sum")
-    dist_to_hist_cur_pos_mean_n = scenario_stats.get_stats("dist_to_hist_cur_pos_sum")
+    dist_to_hist_cur_pos_mean_n = scenario_stats.get_stats("dist_to_hist_cur_pos_mean")
     dist_to_hist_final_pos_n = scenario_stats.get_stats("dist_to_hist_final_pos")
     lane_change_n = scenario_stats.get_stats("lane_change")
 
