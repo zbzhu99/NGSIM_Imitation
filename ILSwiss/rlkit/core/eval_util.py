@@ -174,6 +174,7 @@ def get_generic_path_information(paths, env, stat_prefix=""):
     dist_to_hist_cur_pos_sum_n = scenario_stats.get_stats("dist_to_hist_cur_pos_sum")
     dist_to_hist_cur_pos_mean_n = scenario_stats.get_stats("dist_to_hist_cur_pos_sum")
     dist_to_hist_final_pos_n = scenario_stats.get_stats("dist_to_hist_final_pos")
+    lane_change_n = scenario_stats.get_stats("lane_change")
 
     returns_n = {
         a_id: [sum(path[a_id]["rewards"]) for path in paths] for a_id in agent_ids
@@ -211,6 +212,12 @@ def get_generic_path_information(paths, env, stat_prefix=""):
             statistics[
                 stat_prefix + f" {a_id} {scenario_name} dist_to_hist_final_pos"
             ] = dist_to_hist_final_pos
+        for scenario_name, lane_change in lane_change_n[
+            a_id
+        ].items():
+            statistics[
+                stat_prefix + f" {a_id} {scenario_name} lane_change"
+            ] = lane_change
 
         statistics.update(
             create_stats_ordered_dict(
