@@ -298,12 +298,13 @@ def sample_demos(
     # Do not call p.join().
     demo_trajs = {}
     scenario_vehicles = defaultdict(partial(defaultdict, list))
-    while True:  # not reliable
+    while True:
         try:
             if len(demo_trajs) == 0:
                 vehicle_info, traj = trajs_queue.get(block=True)
             else:
                 vehicle_info, traj = trajs_queue.get(block=True, timeout=100)
+            assert vehicle_info not in demo_trajs, f"vehicle_info: {vehicle_info}"
             demo_trajs[vehicle_info] = traj
             scenario_vehicles[vehicle_info.scenario_name][
                 vehicle_info.traffic_name

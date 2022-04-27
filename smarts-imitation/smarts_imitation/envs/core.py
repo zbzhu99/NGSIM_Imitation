@@ -308,19 +308,11 @@ class SMARTSImitation:
             self.history_start_time = min(
                 self.history_start_time, self.vehicle_start_times[vehicle_id]
             )
-        # self.traffic_history_provider.start_time = self.history_start_time
-        self.ego_missions = {}
-        # for agent_id in self.agent_ids:
-        #     vehicle_id = self.aid_to_vid[agent_id]
-        #     self.ego_missions[agent_id] = replace(
-        #         self.vehicle_missions[vehicle_id],
-        #         start_time=self.vehicle_start_times[vehicle_id]
-        #         - self.history_start_time,
-        #     )
 
         if self.time_slice and not hasattr(self, "vehicle_missions"):
             self.vehicle_missions = self._discover_sliced_vehicle_missions()
 
+        self.ego_missions = {}
         for agent_id in self.agent_ids:
             vehicle_id = self.aid_to_vid[agent_id]
             self.ego_missions[agent_id] = replace(
@@ -328,12 +320,10 @@ class SMARTSImitation:
                 start_time=self.vehicle_start_times[vehicle_id]
                 - self.history_start_time,
             )
-            # self.ego_missions[agent_id] = self.vehicle_missions[vehicle_id]
 
         self.scenario.set_ego_missions(self.ego_missions)
         self.smarts.switch_ego_agents(agent_interfaces)
 
-        # raw_observation_n = self.smarts.reset(self.scenario)
         raw_observation_n = self.smarts.reset(
             self.scenario, start_time=self.history_start_time
         )

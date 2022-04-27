@@ -36,14 +36,14 @@ constants:
     best_criterion: "smallest"
 
     num_epochs: 100
-    num_steps_per_epoch: 200000
+    num_steps_per_epoch: 4000
     num_steps_between_train_calls: 1000
     max_path_length: 1000
     min_steps_before_training: 5000
 
     eval_deterministic: true
 
-    replay_buffer_size: 500000
+    replay_buffer_size: 200000
     expert_buffer_size: 200000
     no_terminal: false
     eval_no_terminal: false

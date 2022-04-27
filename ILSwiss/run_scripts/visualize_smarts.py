@@ -36,8 +36,10 @@ def experiment(variant):
 
     # Can specify vehicle ids to be visualized as follows.
     for scenario_name, traffics in eval_vehicles.items():
+        if scenario_name != exp_specs["visualized_scenario_name"]:
+            print(f"skip scenario: {scenario_name}.")
+            continue
         for traffic_name, traffic_vehicles in traffics.items():
-
             variant["num_vehicles"] = len(traffic_vehicles)
             print(f"Traffic {traffic_name} Vehicle Num: {len(traffic_vehicles)}")
             env_specs = variant["env_specs"]
@@ -126,6 +128,7 @@ def experiment(variant):
 
 
 if __name__ == "__main__":
+    visualized_scenario_name = "ngsim_i80"
     # Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--experiment", help="experiment specification file")
@@ -145,12 +148,13 @@ if __name__ == "__main__":
 
     pkl_name = "best.pkl"
     exp_specs["policy_checkpoint"] = os.path.join(exp_specs["log_path"], pkl_name)
+    exp_specs["visualized_scenario_name"] = visualized_scenario_name
     exp_specs["video_path"] = os.path.join(exp_specs["log_path"], "videos")
     if not os.path.exists(exp_specs["video_path"]):
         os.mkdir(exp_specs["video_path"])
 
     envision_proc = Popen(
-        f"scl envision start -s {ScenarioZoo.get_scenario('ngsim_i80')} -p 8081",
+        f"scl envision start -s {ScenarioZoo.get_scenario(visualized_scenario_name)} -p 8081",
         shell=True,
         preexec_fn=os.setsid,
     )

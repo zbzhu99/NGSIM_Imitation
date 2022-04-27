@@ -212,9 +212,7 @@ def get_generic_path_information(paths, env, stat_prefix=""):
             statistics[
                 stat_prefix + f" {a_id} {scenario_name} dist_to_hist_final_pos"
             ] = dist_to_hist_final_pos
-        for scenario_name, lane_change in lane_change_n[
-            a_id
-        ].items():
+        for scenario_name, lane_change in lane_change_n[a_id].items():
             statistics[
                 stat_prefix + f" {a_id} {scenario_name} lane_change"
             ] = lane_change

@@ -235,15 +235,16 @@ def sample_cutin_demos(
         p.start()
         worker_processes.append(p)
 
-    # Don not call p.join().
+    # Do not call p.join().
     cutin_demo_trajs = {}
     cutin_vehicles = defaultdict(partial(defaultdict, list))
-    while True:  # not reliable
+    while True:
         try:
             if len(cutin_demo_trajs) == 0:
                 vehicle_info, traj = trajs_queue.get(block=True)
             else:
                 vehicle_info, traj = trajs_queue.get(block=True, timeout=600)
+            assert vehicle_info not in cutin_demo_trajs, f"vehicle_info: {vehicle_info}"
             cutin_demo_trajs[vehicle_info] = traj
             cutin_vehicles[vehicle_info.scenario_name][
                 vehicle_info.traffic_name
