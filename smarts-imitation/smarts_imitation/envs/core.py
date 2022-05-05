@@ -238,14 +238,6 @@ class SMARTSImitation:
         )
         return (VehiclePosition(*row) for row in rows)
 
-    def _ordered_vehicle_trajectory(self, vehicle_id):
-        query = """SELECT T.position_x, T.position_y
-                   FROM Trajectory AS T
-                   WHERE T.vehicle_id = ?
-                   ORDER BY T.sim_time DESC"""
-        rows = self.scenario._traffic_history._query_list(query, (vehicle_id,))
-        return (VehiclePosition(*row) for row in rows)
-
     def _get_vehicle_current_history_position(self, vehicle_id):
         rounder = rounder_for_dt(self.smarts._last_dt)
         history_time = rounder(self.smarts.elapsed_sim_time)
@@ -274,7 +266,8 @@ class SMARTSImitation:
             rows = self.scenario._traffic_history.vehicle_trajectory(vehicle_id)
             rows = list(rows)
             assert len(rows) > 0
-            final_position = VehiclePosition(*rows[-1])
+            tr = rows[-1]
+            final_position = VehiclePosition(tr.position_x, tr.position_y, None)
             return final_position
 
     def reset(self):

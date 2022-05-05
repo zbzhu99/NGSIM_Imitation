@@ -39,12 +39,12 @@ constants:
     num_steps_per_epoch: 200000
     num_steps_between_train_calls: 1000
     max_path_length: 1000
-    min_steps_before_training: 5000
+    min_steps_before_training: 50000
 
     eval_deterministic: true
 
     replay_buffer_size: 2000000
-    expert_buffer_size: 3000000
+    expert_buffer_size: 8000000
     no_terminal: false
     eval_no_terminal: false
 
@@ -56,8 +56,8 @@ constants:
     disc_focal_loss_gamma: 0.0
     disc_momentum: 0.9
     use_grad_pen: true
-    disc_optim_batch_size: 256
-    policy_optim_batch_size: 256
+    disc_optim_batch_size: 1024
+    policy_optim_batch_size: 512
     policy_optim_batch_size_from_expert: 0
 
     save_best: true
