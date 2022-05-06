@@ -181,13 +181,23 @@ class InfoAdvIRL(AdvIRL):
             policy_batch["rewards"] = torch.exp(disc_logits) * (-1.0 * disc_logits)
 
         # info-GAIL reward
-        log_posterior = self.posterior_trainer_n[
-            policy_id
-        ].target_posterior_model.get_log_posterior(obs, acts, latents)
-        assert log_posterior.shape == policy_batch["rewards"].shape, "{}, {}".format(
-            log_posterior.shape, policy_batch["rewards"].shape
-        )
-        policy_batch["rewards"] -= self.post_r_coef * log_posterior
+        if self.mode == "gail":
+            # positive reward
+            posterior = self.self.posterior_trainer_n[
+                policy_id
+            ].target_posterior_model.get_posterior(obs, acts, latents)
+            postive_r = F.softplus(posterior, beta=1)
+            policy_batch["rewards"] += self.post_r_coef * postive_r
+
+        elif self.mode == "gail2":
+            # negative reward, same as paper.
+            log_posterior = self.posterior_trainer_n[
+                policy_id
+            ].target_posterior_model.get_log_posterior(obs, acts, latents)
+            assert log_posterior.shape == policy_batch["rewards"].shape, "{}, {}".format(
+                log_posterior.shape, policy_batch["rewards"].shape
+            )
+            policy_batch["rewards"] += self.post_r_coef * log_posterior
 
         if self.clip_max_rews:
             policy_batch["rewards"] = torch.clamp(
