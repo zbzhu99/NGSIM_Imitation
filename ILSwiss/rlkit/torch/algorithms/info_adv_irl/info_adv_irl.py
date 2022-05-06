@@ -183,7 +183,7 @@ class InfoAdvIRL(AdvIRL):
         # info-GAIL reward
         if self.mode == "gail":
             # positive reward
-            posterior = self.self.posterior_trainer_n[
+            posterior = self.posterior_trainer_n[
                 policy_id
             ].target_posterior_model.get_posterior(obs, acts, latents)
             postive_r = F.softplus(posterior, beta=1)
