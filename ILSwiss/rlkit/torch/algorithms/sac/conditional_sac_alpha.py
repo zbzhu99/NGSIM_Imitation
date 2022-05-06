@@ -113,7 +113,7 @@ class ConditionalSoftActorCritic(Trainer):
         )  # do not need grad || it's the shared part of two calculation
         min_target_value = torch.min(target_qf1_values, target_qf2_values)
         q_target = rewards + (1.0 - terminals) * self.discount * (
-            min_target_value - self.alpha * next_log_pi
+            min_target_value - self.alpha * self.reward_scale * next_log_pi
         )  # original implementation has detach
         q_target = q_target.detach()
 
@@ -141,7 +141,9 @@ class ConditionalSoftActorCritic(Trainer):
         q_new_actions = torch.min(q1_new_acts, q2_new_acts)
 
         self.policy_optimizer.zero_grad()
-        policy_loss = torch.mean(self.alpha * log_pi - q_new_actions)  ##
+        policy_loss = torch.mean(
+            self.alpha * self.reward_scale * log_pi - q_new_actions
+        )  ##
         mean_reg_loss = self.policy_mean_reg_weight * (policy_mean**2).mean()
         std_reg_loss = self.policy_std_reg_weight * (policy_log_std**2).mean()
         policy_reg_loss = mean_reg_loss + std_reg_loss

@@ -135,7 +135,73 @@ class ScenarioStats:
         return stats
 
 
-def get_generic_path_information(paths, env, stat_prefix=""):
+class InfoAdvIRLScenarioStats(ScenarioStats):
+    def update(self, paths):
+        for a_id in self.agent_ids:
+            for path in paths:
+                scenario_name = path.scenario_name
+                latent_id = "latent_id_{}".format(path[a_id]["latents"][0])
+
+                data = {
+                    "success_rate": None,
+                    "collision_rate": None,
+                    "dist_to_hist_cur_pos_sum": None,
+                    "dist_to_hist_cur_pos_mean": None,
+                    "dist_to_hist_final_pos": None,
+                    "lane_change": None,
+                }
+
+                data["success_rate"] = float(
+                    path[a_id]["env_infos"][-1]["reached_goal"]
+                )
+                data["collision_rate"] = float(path[a_id]["env_infos"][-1]["collision"])
+                dist_to_hist_cur_pos = []
+                for i in range(len(path[a_id]["env_infos"])):
+                    dist = path[a_id]["env_infos"][i]["dist_to_hist_cur_pos"]
+                    if dist is None:
+                        continue
+                    dist_to_hist_cur_pos.append(dist)
+
+                if len(dist_to_hist_cur_pos) > 0:
+                    dist_to_hist_cur_pos_sum = sum(dist_to_hist_cur_pos)
+                    dist_to_hist_cur_pos_mean = dist_to_hist_cur_pos_sum / len(
+                        dist_to_hist_cur_pos
+                    )
+                    data["dist_to_hist_cur_pos_sum"] = dist_to_hist_cur_pos_sum
+                    data["dist_to_hist_cur_pos_mean"] = dist_to_hist_cur_pos_mean
+
+                data["dist_to_hist_final_pos"] = path[a_id]["env_infos"][-1][
+                    "dist_to_hist_cur_pos"
+                ]
+
+                lane_change = 0
+                for i in range(1, len(path[a_id]["env_infos"])):
+                    pre_lane = path[a_id]["env_infos"][i - 1]["lane_index"]
+                    cur_lane = path[a_id]["env_infos"][i]["lane_index"]
+                    lane_change += float(cur_lane != pre_lane)
+                data["lane_change"] = lane_change
+
+                for name, value in data.items():
+                    if value is None:
+                        continue
+                    all_attr = getattr(
+                        self, "all_scenarios_" + ScenarioStats._attr_mapping[name]
+                    )
+                    scenario_attr = getattr(
+                        self, "scenario_" + ScenarioStats._attr_mapping[name]
+                    )
+                    all_attr[a_id] += value
+                    scenario_attr[a_id][scenario_name] += value
+                    scenario_attr[a_id][latent_id] += value
+
+                self.scenario_total_count[a_id][scenario_name] += 1
+                self.scenario_total_count[a_id][latent_id] += 1
+                self.all_scenarios_total_count[a_id] += 1
+
+
+def get_generic_path_information(
+    paths, env, stat_prefix="", scenario_stats_class=ScenarioStats
+):
     """
     Get an OrderedDict with a bunch of statistic names and values.
     """
@@ -167,7 +233,7 @@ def get_generic_path_information(paths, env, stat_prefix=""):
             distance_travelled.append(distance)
         distance_travelled_n[a_id] = distance_travelled
 
-    scenario_stats = ScenarioStats(agent_ids)
+    scenario_stats = scenario_stats_class(agent_ids)
     scenario_stats.update(paths)
     success_rate_n = scenario_stats.get_stats("success_rate")
     collision_rate_n = scenario_stats.get_stats("collision_rate")

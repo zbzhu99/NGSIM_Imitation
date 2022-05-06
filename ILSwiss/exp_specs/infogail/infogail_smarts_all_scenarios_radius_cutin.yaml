@@ -69,7 +69,7 @@ constants:
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
     posterior_optim_batch_size: 256
-    post_r_coef: 0.0
+    post_r_coef: 0.5
 
     save_best: true
     save_epoch: false
@@ -79,7 +79,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 1.0
+    alpha: 0.25
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25

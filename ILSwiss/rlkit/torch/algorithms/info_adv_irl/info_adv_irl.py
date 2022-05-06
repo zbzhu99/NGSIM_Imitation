@@ -106,15 +106,6 @@ class InfoAdvIRL(AdvIRL):
             self.posterior_trainer_n[p_id].end_epoch()
         super()._end_epoch()
 
-    def evaluate(self, epoch):
-        if self.eval_statistics is None:
-            self.eval_statistics = OrderedDict()
-        for p_id in self.policy_ids:
-            posterior_statistics = self.posterior_trainer_n[p_id].get_eval_statistics()
-            for name, data in posterior_statistics.items():
-                self.eval_statistics.update({f"{p_id} {name}": data})
-        super().evaluate(epoch)
-
     def _do_training(self, epoch):
         for t in range(self.num_update_loops_per_train_call):
             for a_id in self.agent_ids:
@@ -194,9 +185,9 @@ class InfoAdvIRL(AdvIRL):
             log_posterior = self.posterior_trainer_n[
                 policy_id
             ].target_posterior_model.get_log_posterior(obs, acts, latents)
-            assert log_posterior.shape == policy_batch["rewards"].shape, "{}, {}".format(
-                log_posterior.shape, policy_batch["rewards"].shape
-            )
+            assert (
+                log_posterior.shape == policy_batch["rewards"].shape
+            ), "{}, {}".format(log_posterior.shape, policy_batch["rewards"].shape)
             policy_batch["rewards"] += self.post_r_coef * log_posterior
 
         if self.clip_max_rews:
@@ -541,3 +532,91 @@ class InfoAdvIRL(AdvIRL):
             + self.posterior_trainer_n[p_id].networks
             for p_id in self.policy_ids
         }
+
+    def evaluate(self, epoch):
+
+        # InfoAdvIRL evaluate
+        if self.eval_statistics is None:
+            self.eval_statistics = OrderedDict()
+        for p_id in self.policy_ids:
+            posterior_statistics = self.posterior_trainer_n[p_id].get_eval_statistics()
+            for name, data in posterior_statistics.items():
+                self.eval_statistics.update({f"{p_id} {name}": data})
+
+        # AdvIRL evaluate
+        if self.eval_statistics is None:
+            self.eval_statistics = OrderedDict()
+        self.eval_statistics.update(self.disc_eval_statistics)
+        for p_id in self.policy_ids:
+            _statistics = self.policy_trainer_n[p_id].get_eval_statistics()
+            for name, data in _statistics.items():
+                self.eval_statistics.update({f"{p_id} {name}": data})
+
+        # BaseAlgorithm evaluate
+        statistics = OrderedDict()
+        try:
+            statistics.update(self.eval_statistics)
+            self.eval_statistics = None
+        except Exception:
+            print("No Stats to Eval")
+
+        logger.log("Collecting samples for evaluation")
+        test_paths = self.eval_sampler.obtain_samples()
+
+        statistics.update(
+            eval_util.get_generic_path_information(
+                test_paths,
+                self.env,
+                stat_prefix="Test",
+                scenario_stats_class=eval_util.InfoAdvIRLScenarioStats,
+            )
+        )
+
+        if len(self._exploration_paths) > 0:
+            statistics.update(
+                eval_util.get_generic_path_information(
+                    self._exploration_paths,
+                    self.env,
+                    stat_prefix="Exploration",
+                    scenario_stats_class=eval_util.InfoAdvIRLScenarioStats,
+                )
+            )
+
+        if hasattr(self.env, "log_diagnostics"):
+            self.env.log_diagnostics(test_paths)
+        if hasattr(self.env, "log_statistics"):
+            statistics.update(self.env.log_statistics(test_paths))
+        if int(epoch) % self.freq_log_visuals == 0:
+            if hasattr(self.env, "log_visuals"):
+                self.env.log_visuals(test_paths, epoch, logger.get_snapshot_dir())
+
+        agent_mean_avg_returns = eval_util.get_agent_mean_avg_returns(test_paths)
+        statistics["AgentMeanAverageReturn"] = agent_mean_avg_returns
+        for key, value in statistics.items():
+            logger.record_tabular(key, np.mean(value))
+
+        best_statistic = statistics[self.best_key]
+        data_to_save = {"epoch": epoch, "statistics": statistics}
+        data_to_save.update(self.get_epoch_snapshot(epoch))
+        if self.save_epoch:
+            logger.save_extra_data(data_to_save, "epoch{}.pkl".format(epoch))
+            print("\n\nSAVED MODEL AT EPOCH {}\n\n".format(epoch))
+
+        if self.best_criterion == "largest":
+            if best_statistic > self.best_statistic_so_far:
+                self.best_statistic_so_far = best_statistic
+                if self.save_best and epoch >= self.save_best_starting_from_epoch:
+                    data_to_save = {"epoch": epoch, "statistics": statistics}
+                    data_to_save.update(self.get_epoch_snapshot(epoch))
+                    logger.save_extra_data(data_to_save, "best.pkl")
+                    print("\n\nSAVED BEST\n\n")
+        elif self.best_criterion == "smallest":
+            if best_statistic < self.best_statistic_so_far:
+                self.best_statistic_so_far = best_statistic
+                if self.save_best and epoch >= self.save_best_starting_from_epoch:
+                    data_to_save = {"epoch": epoch, "statistics": statistics}
+                    data_to_save.update(self.get_epoch_snapshot(epoch))
+                    logger.save_extra_data(data_to_save, "best.pkl")
+                    print("\n\nSAVED BEST\n\n")
+        else:
+            raise NotImplementedError
