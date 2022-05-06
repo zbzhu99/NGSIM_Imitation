@@ -393,6 +393,7 @@ class SMARTSImitation:
         return vehicle_missions
 
     def _init_vehicle_missions(self):
+
         if self.vehicles is None:
             self.time_slice = False
             self.vehicle_missions = (
@@ -420,21 +421,17 @@ class SMARTSImitation:
             # self.vehicle_missions = {}
             # for vehicle in self.vehicles:
             #
-            #     # def custom_filter(vehs):
-            #     #     nonlocal vehicle
-            #     #     return (v for v in vehs if v.vehicle_id == vehicle.vehicle_id)
-            #     custom_filter = lambda x: x
+            #     def custom_filter(vehs):
+            #         nonlocal vehicle
+            #         return (v for v in vehs if str(v.vehicle_id) == vehicle.vehicle_id)
             #
-            #     # print(f"self.vehicles: {self.vehicles}")
-            #     print(f"scenario_name: {self.scenario_name}")
-            #     print(f"current_vehicle: {vehicle}")
             #     missions = self.scenario.history_missions_for_window(
             #         exists_at_or_after=vehicle.start_time,
             #         ends_before=10000.0,
             #         minimum_vehicle_window=0.0,
             #         filter=custom_filter,
             #     )
-            #     assert len(missions) == 1, f"missions: {missions }"
+            #     assert len(missions) == 1, f"missions: {missions}, mission_len: {len(missions)}"
             #     self.vehicle_missions[vehicle.vehicle_id] = missions
 
             self.vehicle_start_times = {

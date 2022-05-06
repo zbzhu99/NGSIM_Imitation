@@ -180,13 +180,14 @@ class InfoAdvIRL(AdvIRL):
         else:  # fairl
             policy_batch["rewards"] = torch.exp(disc_logits) * (-1.0 * disc_logits)
 
+        # info-GAIL reward
         log_posterior = self.posterior_trainer_n[
             policy_id
         ].target_posterior_model.get_log_posterior(obs, acts, latents)
         assert log_posterior.shape == policy_batch["rewards"].shape, "{}, {}".format(
             log_posterior.shape, policy_batch["rewards"].shape
         )
-        policy_batch["rewards"] += self.post_r_coef * log_posterior
+        policy_batch["rewards"] -= self.post_r_coef * log_posterior
 
         if self.clip_max_rews:
             policy_batch["rewards"] = torch.clamp(
