@@ -254,33 +254,33 @@ def get_generic_path_information(
     for a_id in agent_ids:
         for scenario_name, success_rate in success_rate_n[a_id].items():
             statistics[
-                stat_prefix + f" {a_id} {scenario_name} Success Rate"
+                stat_prefix + f" {a_id} Success Rate {scenario_name}"
             ] = success_rate
         for scenario_name, collision_rate in collision_rate_n[a_id].items():
             statistics[
-                stat_prefix + f" {a_id} {scenario_name} Collision Rate"
+                stat_prefix + f" {a_id} Collision Rate {scenario_name}"
             ] = collision_rate
         for scenario_name, dist_to_hist_cur_pos_sum in dist_to_hist_cur_pos_sum_n[
             a_id
         ].items():
             statistics[
-                stat_prefix + f" {a_id} {scenario_name} dist_to_hist_cur_pos_sum"
+                stat_prefix + f" {a_id} dist_to_hist_cur_pos_sum {scenario_name}"
             ] = dist_to_hist_cur_pos_sum
         for scenario_name, dist_to_hist_cur_pos_mean in dist_to_hist_cur_pos_mean_n[
             a_id
         ].items():
             statistics[
-                stat_prefix + f" {a_id} {scenario_name} dist_to_hist_cur_pos_mean"
+                stat_prefix + f" {a_id} dist_to_hist_cur_pos_mean {scenario_name}"
             ] = dist_to_hist_cur_pos_mean
         for scenario_name, dist_to_hist_final_pos in dist_to_hist_final_pos_n[
             a_id
         ].items():
             statistics[
-                stat_prefix + f" {a_id} {scenario_name} dist_to_hist_final_pos"
+                stat_prefix + f" {a_id} dist_to_hist_final_pos {scenario_name}"
             ] = dist_to_hist_final_pos
         for scenario_name, lane_change in lane_change_n[a_id].items():
             statistics[
-                stat_prefix + f" {a_id} {scenario_name} lane_change"
+                stat_prefix + f" {a_id} lane_change {scenario_name}"
             ] = lane_change
 
         statistics.update(

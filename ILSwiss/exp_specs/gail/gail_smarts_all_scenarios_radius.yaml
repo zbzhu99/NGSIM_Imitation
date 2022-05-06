@@ -32,7 +32,7 @@ constants:
     mode: 'gail'
     state_only: false
 
-    best_key: "Test agent_0 all Collision Rate"
+    best_key: "Test agent_0 Collision Rate all"
     best_criterion: "smallest"
 
     num_epochs: 100
