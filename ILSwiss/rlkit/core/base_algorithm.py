@@ -12,7 +12,7 @@ from rlkit.data_management.env_replay_buffer import EnvReplayBuffer
 from rlkit.data_management.path_builder import PathBuilder
 from rlkit.policies.base import ExplorationPolicy
 from rlkit.torch.common.policies import MakeDeterministic
-from rlkit.samplers import PathSampler
+from rlkit.samplers import PathSampler, ConditionalPathSampler
 
 
 class BaseAlgorithm(metaclass=abc.ABCMeta):

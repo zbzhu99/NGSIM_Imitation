@@ -102,6 +102,148 @@ class Mlp(PyTorchModule):
             return output
 
 
+class ConditionalMlp(PyTorchModule):
+    def __init__(
+        self,
+        input_hidden_sizes,
+        input_size,
+        output_size,
+        latent_variable_num,
+        latent_hidden_sizes,
+        init_w=3e-3,
+        hidden_activation=F.relu,
+        output_activation=identity,
+        hidden_init=ptu.fanin_init,
+        b_init_value=0.1,
+        layer_norm=False,
+        layer_norm_kwargs=None,
+        batch_norm=False,
+        batch_norm_before_output_activation=False,
+    ):
+        self.save_init_params(locals())
+        super().__init__()
+
+        if layer_norm_kwargs is None:
+            layer_norm_kwargs = dict()
+
+        self.input_size = input_size
+        self.latent_variable_num = latent_variable_num
+        self.output_size = output_size
+        self.hidden_activation = hidden_activation
+        self.output_activation = output_activation
+        self.layer_norm = layer_norm
+        self.batch_norm = batch_norm
+        self.batch_norm_before_output_activation = batch_norm_before_output_activation
+        self.input_layer_norms = []
+        self.input_batch_norms = []
+        self.latent_layer_norms = []
+        self.latent_batch_norms = []
+        self.input_encoder_fcs = []
+        self.latent_encoder_fcs = []
+
+        in_size = input_size
+        for i, next_size in enumerate(input_hidden_sizes):
+            fc = nn.Linear(in_size, next_size)
+            in_size = next_size
+            ptu.fanin_init(fc.weight)
+            fc.bias.data.fill_(0.1),
+            self.__setattr__("input_fc{}".format(i), fc)
+            self.input_encoder_fcs.append(fc)
+            if self.layer_norm:
+                ln = LayerNorm(next_size)
+                self.__setattr__("input_layer_norm{}".format(i), ln)
+                self.input_layer_norms.append(ln)
+            if self.batch_norm:
+                bn = BatchNorm1d(next_size)
+                self.__setattr__("input_batch_norm{}".format(i), bn)
+                self.input_batch_norms.append(bn)
+
+        in_size = latent_variable_num
+        for i, next_size in enumerate(latent_hidden_sizes):
+            fc = nn.Linear(in_size, next_size)
+            in_size = next_size
+            ptu.fanin_init(fc.weight)
+            fc.bias.data.fill_(0.1),
+            self.__setattr__("latent_fc{}".format(i), fc)
+            self.latent_encoder_fcs.append(fc)
+            if self.layer_norm:
+                ln = LayerNorm(next_size)
+                self.__setattr__("latent_layer_norm{}".format(i), ln)
+                self.latent_layer_norms.append(ln)
+            if self.batch_norm:
+                bn = BatchNorm1d(next_size)
+                self.__setattr__("latent_batch_norm{}".format(i), bn)
+                self.latent_batch_norms.append(bn)
+
+        if len(input_hidden_sizes) > 0 and len(latent_hidden_sizes) > 0:
+            self.last_hidden_size = input_hidden_sizes[-1] + latent_hidden_sizes[-1]
+        elif len(input_hidden_sizes) > 0:
+            self.last_hidden_size = input_hidden_sizes[-1] + latent_variable_num
+        elif len(latent_hidden_sizes) > 0:
+            self.last_hidden_size = input_size + latent_hidden_sizes[-1]
+        else:
+            self.last_hidden_size = input_size + latent_variable_num
+
+        if self.batch_norm_before_output_activation:
+            self.last_batch_norm = BatchNorm1d(output_size)
+
+        self.last_fc = nn.Linear(self.last_hidden_size, output_size)
+        self.last_fc.weight.data.uniform_(-init_w, init_w)
+        self.last_fc.bias.data.uniform_(-init_w, init_w)
+
+    def forward(
+        self,
+        input,
+        latent_variable=None,
+        return_preactivations=False,
+        ignore_last_fc=False,
+    ):
+        h_input = input
+        for i, fc in enumerate(self.input_encoder_fcs):
+            h_input = fc(h_input)
+            if self.layer_norm:
+                h_input = self.input_layer_norms[i](h_input)
+            if self.batch_norm:
+                h_input = self.input_batch_norms[i](h_input)
+            h_input = self.hidden_activation(h_input)
+
+        if len(latent_variable.shape) > 1:
+            latent_variable = latent_variable.squeeze()
+        assert len(latent_variable.shape) == 1
+
+        h_latent = F.one_hot(
+            latent_variable.long(), num_classes=self.latent_variable_num
+        ).float()
+        for i, fc in enumerate(self.latent_encoder_fcs):
+            h_latent = fc(h_latent)
+            if self.layer_norm:
+                h_latent = self.latent_layer_norms[i](h_latent)
+            if self.batch_norm:
+                h_latent = self.latent_batch_norms[i](h_latent)
+            h_latent = self.hidden_activation(h_latent)
+
+        h = torch.cat([h_input, h_latent], dim=-1)
+
+        if ignore_last_fc:
+            assert return_preactivations == False
+            return h
+
+        preactivation = self.last_fc(h)
+        if self.batch_norm_before_output_activation:
+            preactivation = self.last_batch_norm(preactivation)
+        output = self.output_activation(preactivation)
+        if return_preactivations:
+            return output, preactivation
+        else:
+            return output
+
+
+class FlattenConditionalMlp(ConditionalMlp):
+    def forward(self, *inputs, **kwargs):
+        flat_inputs = torch.cat(inputs, dim=1)
+        return super().forward(flat_inputs, **kwargs)
+
+
 class ConvNet(PyTorchModule):
     def __init__(
         self,

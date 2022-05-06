@@ -12,7 +12,7 @@ class BCEFocalLoss(nn.Module):
         targets = targets.long().squeeze()
         prob_1 = torch.sigmoid(inputs)
         prob_0 = 1.0 - prob_1
-        soft_inputs = torch.concat([prob_0, prob_1], dim=-1)
+        soft_inputs = torch.cat([prob_0, prob_1], dim=-1)
         target_one_hot = F.one_hot(targets, num_classes=2)
         weight = torch.pow(1.0 - soft_inputs, self.gamma)
         focal = -weight * torch.log(soft_inputs)

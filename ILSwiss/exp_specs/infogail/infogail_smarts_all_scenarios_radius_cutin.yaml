@@ -1,6 +1,6 @@
 meta_data:
-  script_path: run_scripts/adv_irl_exp_script.py
-  exp_name: gail_smarts_all_scenarios_cutin
+  script_path: run_scripts/info_adv_irl_exp_script.py
+  exp_name: infogail_smarts_all_scenarios_cutin
   description: Train an adversarial IRL model
   num_workers: 12 # 64
   using_gpus: true
@@ -25,12 +25,20 @@ constants:
   disc_use_bn: false
   disc_clamp_magnitude: 10.0
 
-  policy_net_size: 512
-  policy_num_hidden_layers: 3
+  policy_obs_hidden_size: 512
+  policy_obs_num_hidden_layers: 3
+  policy_latent_hidden_size: 32
+  policy_latent_num_hidden_layers: 1
+
+  latent_variable_num: 4
+  posterior_hidden_size: 64
+  posterior_num_hidden_layers: 2
+  posterior_hid_act: relu
 
   adv_irl_params:
     mode: 'gail'
     state_only: false
+
 
     best_key: "Test agent_0 all Collision Rate"
     best_criterion: "smallest"
@@ -51,6 +59,7 @@ constants:
     num_update_loops_per_train_call: 100
     num_disc_updates_per_loop_iter: 1
     num_policy_updates_per_loop_iter: 1
+    num_post_updates_per_loop_iter: 1
 
     disc_lr: 0.0003
     disc_focal_loss_gamma: 2.0
@@ -59,6 +68,8 @@ constants:
     disc_optim_batch_size: 256
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
+    posterior_optim_batch_size: 512
+    post_r_coef: 0.5
 
     save_best: true
     save_epoch: false
@@ -77,6 +88,11 @@ constants:
     vf_lr: 0.0003
     policy_mean_reg_weight: 0.001
     policy_std_reg_weight: 0.001
+
+  posterior_params:
+    post_lr: 0.0003
+    post_momentum: 0.9
+    soft_target_tau: 0.005
 
   env_specs:
     env_creator: "smarts"

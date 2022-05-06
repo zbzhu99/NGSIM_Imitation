@@ -3,7 +3,6 @@ from collections import OrderedDict
 
 import torch
 import torch.optim as optim
-from torch import nn
 from torch import autograd
 import torch.nn.functional as F
 
@@ -11,6 +10,7 @@ import rlkit.torch.utils.pytorch_util as ptu
 from rlkit.torch.core import np_to_pytorch_batch
 from rlkit.torch.algorithms.torch_base_algorithm import TorchBaseAlgorithm
 from rlkit.torch.common.loss import BCEFocalLoss
+from copy import deepcopy
 
 
 class AdvIRL(TorchBaseAlgorithm):
@@ -117,7 +117,7 @@ class AdvIRL(TorchBaseAlgorithm):
         else:
             buffer = self.replay_buffer
         batch = buffer.random_batch(batch_size, agent_id, keys=keys)
-        batch = np_to_pytorch_batch(batch)
+        batch = deepcopy(np_to_pytorch_batch(batch))
         return batch
 
     def _end_epoch(self):
@@ -127,7 +127,8 @@ class AdvIRL(TorchBaseAlgorithm):
         super()._end_epoch()
 
     def evaluate(self, epoch):
-        self.eval_statistics = OrderedDict()
+        if self.eval_statistics is None:
+            self.eval_statistics = OrderedDict()
         self.eval_statistics.update(self.disc_eval_statistics)
         for p_id in self.policy_ids:
             _statistics = self.policy_trainer_n[p_id].get_eval_statistics()
