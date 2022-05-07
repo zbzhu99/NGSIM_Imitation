@@ -177,8 +177,14 @@ class InfoAdvIRL(AdvIRL):
             posterior = self.posterior_trainer_n[
                 policy_id
             ].target_posterior_model.get_posterior(obs, acts, latents)
-            postive_r = F.softplus(posterior, beta=1)
-            policy_batch["rewards"] += self.post_r_coef * postive_r
+
+            def arc_sigmoid(x):
+                x = x.clamp(x, min=0.01, max=0.99)
+                x = torch.log(x / (1.0 - x))
+                return x
+
+            positive_r = F.softplus(arc_sigmoid(posterior), beta=1)
+            policy_batch["rewards"] += self.post_r_coef * positive_r
 
         elif self.mode == "gail2":
             # negative reward, same as paper.
