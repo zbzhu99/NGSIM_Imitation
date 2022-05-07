@@ -363,7 +363,6 @@ class ConditionalPathSampler(PathSampler):
         no_terminal=False,
         render=False,
         render_kwargs={},
-        latent_variable_num=4,
     ):
         super().__init__(
             env=env,

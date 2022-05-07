@@ -62,14 +62,14 @@ constants:
     num_post_updates_per_loop_iter: 1
 
     disc_lr: 0.0003
-    disc_focal_loss_gamma: 2.0
+    disc_focal_loss_gamma: 0.0
     disc_momentum: 0.9
     use_grad_pen: true
     disc_optim_batch_size: 256
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
     posterior_optim_batch_size: 256
-    post_r_coef: 0.5
+    post_r_coef: 1.0
 
     save_best: true
     save_epoch: false

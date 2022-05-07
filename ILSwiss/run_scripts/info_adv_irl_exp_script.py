@@ -305,6 +305,7 @@ def experiment(variant):
         eval_car_num=eval_car_num,
         eval_sampler_func=ConditionalPathSampler,
         replay_buffer=replay_buffer,
+        latent_variable_num=variant["latent_variable_num"],
         **variant["adv_irl_params"],
     )
 
