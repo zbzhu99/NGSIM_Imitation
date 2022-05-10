@@ -179,7 +179,7 @@ class InfoAdvIRL(AdvIRL):
             ].target_posterior_model.get_posterior(obs, acts, latents)
 
             def arc_sigmoid(x):
-                x = x.clamp(x, min=0.01, max=0.99)
+                x = torch.clamp(x, min=0.01, max=0.99)
                 x = torch.log(x / (1.0 - x))
                 return x
 
@@ -574,7 +574,7 @@ class InfoAdvIRL(AdvIRL):
                 test_paths,
                 self.env,
                 stat_prefix="Test",
-                scenario_stats_class=eval_util.InfoAdvIRLScenarioStats,
+                scenario_stats_class=eval_util.InfoAdvIRLScenarioWiseStats,
             )
         )
 
@@ -584,7 +584,7 @@ class InfoAdvIRL(AdvIRL):
                     self._exploration_paths,
                     self.env,
                     stat_prefix="Exploration",
-                    scenario_stats_class=eval_util.InfoAdvIRLScenarioStats,
+                    scenario_stats_class=eval_util.InfoAdvIRLScenarioWiseStats,
                 )
             )
 

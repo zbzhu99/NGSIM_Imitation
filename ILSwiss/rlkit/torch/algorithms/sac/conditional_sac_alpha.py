@@ -35,6 +35,7 @@ class ConditionalSoftActorCritic(Trainer):
         policy_std_reg_weight=1e-3,
         optimizer_class=optim.Adam,
         beta_1=0.9,
+        ignore_terminal=False,
         **kwargs,
     ):
         self.policy = policy
@@ -46,6 +47,7 @@ class ConditionalSoftActorCritic(Trainer):
         self.soft_target_tau = soft_target_tau
         self.policy_mean_reg_weight = policy_mean_reg_weight
         self.policy_std_reg_weight = policy_std_reg_weight
+        self.ignore_terminal = ignore_terminal
 
         self.train_alpha = train_alpha
         self.log_alpha = torch.tensor(np.log(alpha), requires_grad=train_alpha)
@@ -79,7 +81,10 @@ class ConditionalSoftActorCritic(Trainer):
         # policy_params = itertools.chain(self.policy.parameters())
 
         rewards = self.reward_scale * batch["rewards"]
-        terminals = batch["terminals"]
+        if self.ignore_terminal:
+            terminals = 0.0
+        else:
+            terminals = batch["terminals"]
         obs = batch["observations"]
         latents = batch["latents"]
         actions = batch["actions"]

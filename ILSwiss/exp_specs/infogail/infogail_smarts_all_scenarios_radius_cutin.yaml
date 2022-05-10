@@ -30,13 +30,13 @@ constants:
   policy_latent_hidden_size: 32
   policy_latent_num_hidden_layers: 1
 
-  latent_variable_num: 4
-  posterior_hidden_size: 64
+  latent_variable_num: 2
+  posterior_hidden_size: 128
   posterior_num_hidden_layers: 2
-  posterior_hid_act: relu
+  posterior_hid_act: tanh
 
   adv_irl_params:
-    mode: 'gail'
+    mode: 'gail2'
     state_only: false
 
 
@@ -59,7 +59,7 @@ constants:
     num_update_loops_per_train_call: 100
     num_disc_updates_per_loop_iter: 1
     num_policy_updates_per_loop_iter: 1
-    num_post_updates_per_loop_iter: 1
+    num_post_updates_per_loop_iter: 2
 
     disc_lr: 0.0003
     disc_focal_loss_gamma: 0.0
@@ -69,7 +69,7 @@ constants:
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
     posterior_optim_batch_size: 256
-    post_r_coef: 1.0
+    post_r_coef: 0.0
 
     save_best: true
     save_epoch: false
@@ -88,11 +88,12 @@ constants:
     vf_lr: 0.0003
     policy_mean_reg_weight: 0.001
     policy_std_reg_weight: 0.001
+    ignore_terminal: false
 
   posterior_params:
     post_lr: 0.0003
     post_momentum: 0.9
-    soft_target_tau: 0.5
+    soft_target_tau: 0.2
 
   env_specs:
     env_creator: "smarts"
@@ -104,6 +105,7 @@ constants:
       closest_neighbor_num: 8
       obs_stack_size: 1
       feature_type: "radius"
+      collision_done: false
     training_env_specs:
       env_num: 20
       wait_num: 10

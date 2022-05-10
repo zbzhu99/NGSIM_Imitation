@@ -14,10 +14,11 @@ from collections import defaultdict
 from functools import partial
 
 
-class ScenarioStats:
+class ScenarioWiseStats:
     _attr_mapping = {
         "success_rate": "win_count",
-        "collision_rate": "collision_count",
+        "collision_rate": "collision_rate",
+        "collision_time": "collision_time",
         "dist_to_hist_cur_pos_sum": "dist_to_hist_cur_pos_sum",
         "dist_to_hist_cur_pos_mean": "dist_to_hist_cur_pos_mean",
         "dist_to_hist_final_pos": "dist_to_hist_final_pos",
@@ -29,7 +30,7 @@ class ScenarioStats:
 
         self.scenario_total_count = defaultdict(partial(defaultdict, float))
         self.all_scenarios_total_count = defaultdict(float)
-        for attr_name in ScenarioStats._attr_mapping.values():
+        for attr_name in ScenarioWiseStats._attr_mapping.values():
             setattr(
                 self,
                 "all_scenarios_" + attr_name,
@@ -42,7 +43,7 @@ class ScenarioStats:
     def reset(self):
         self.scenario_total_count = defaultdict(partial(defaultdict, float))
         self.all_scenarios_total_count = defaultdict(float)
-        for attr_name in ScenarioStats._attr_mapping.values():
+        for attr_name in ScenarioWiseStats._attr_mapping.values():
             setattr(
                 self,
                 "all_scenarios_" + attr_name,
@@ -60,6 +61,7 @@ class ScenarioStats:
                 data = {
                     "success_rate": None,
                     "collision_rate": None,
+                    "collision_time": None,
                     "dist_to_hist_cur_pos_sum": None,
                     "dist_to_hist_cur_pos_mean": None,
                     "dist_to_hist_final_pos": None,
@@ -69,7 +71,13 @@ class ScenarioStats:
                 data["success_rate"] = float(
                     path[a_id]["env_infos"][-1]["reached_goal"]
                 )
-                data["collision_rate"] = float(path[a_id]["env_infos"][-1]["collision"])
+                collision_time = 0
+                for i in range(len(path[a_id]["env_infos"])):
+                    collision_time += float(path[a_id]["env_infos"][i]["collision"])
+                data["collision_time"] = collision_time
+                collision_rate = 1 if collision_time > 0 else 0
+                data["collision_rate"] = collision_rate
+
                 dist_to_hist_cur_pos = []
                 for i in range(len(path[a_id]["env_infos"])):
                     dist = path[a_id]["env_infos"][i]["dist_to_hist_cur_pos"]
@@ -100,10 +108,10 @@ class ScenarioStats:
                     if value is None:
                         continue
                     all_attr = getattr(
-                        self, "all_scenarios_" + ScenarioStats._attr_mapping[name]
+                        self, "all_scenarios_" + ScenarioWiseStats._attr_mapping[name]
                     )
                     scenario_attr = getattr(
-                        self, "scenario_" + ScenarioStats._attr_mapping[name]
+                        self, "scenario_" + ScenarioWiseStats._attr_mapping[name]
                     )
                     all_attr[a_id] += value
                     scenario_attr[a_id][scenario_name] += value
@@ -113,7 +121,7 @@ class ScenarioStats:
 
     def get_stats(self, name):
 
-        assert name in ScenarioStats._attr_mapping
+        assert name in ScenarioWiseStats._attr_mapping
         stats = defaultdict(partial(defaultdict, float))
         for a_id, scenarios in self.scenario_total_count.items():
             for scenario_name, s_total_count in scenarios.items():
@@ -121,7 +129,7 @@ class ScenarioStats:
                     pass
                 else:
                     _scenario_value = getattr(
-                        self, "scenario_" + ScenarioStats._attr_mapping[name]
+                        self, "scenario_" + ScenarioWiseStats._attr_mapping[name]
                     )[a_id][scenario_name]
                     stats[a_id][scenario_name] = _scenario_value / s_total_count
             all_total_count = self.all_scenarios_total_count[a_id]
@@ -129,13 +137,13 @@ class ScenarioStats:
                 pass
             else:
                 all_value = getattr(
-                    self, "all_scenarios_" + ScenarioStats._attr_mapping[name]
+                    self, "all_scenarios_" + ScenarioWiseStats._attr_mapping[name]
                 )[a_id]
                 stats[a_id]["all"] = all_value / all_total_count
         return stats
 
 
-class InfoAdvIRLScenarioStats(ScenarioStats):
+class InfoAdvIRLScenarioWiseStats(ScenarioWiseStats):
     def update(self, paths):
         for a_id in self.agent_ids:
             for path in paths:
@@ -145,6 +153,7 @@ class InfoAdvIRLScenarioStats(ScenarioStats):
                 data = {
                     "success_rate": None,
                     "collision_rate": None,
+                    "collision_time": None,
                     "dist_to_hist_cur_pos_sum": None,
                     "dist_to_hist_cur_pos_mean": None,
                     "dist_to_hist_final_pos": None,
@@ -154,7 +163,13 @@ class InfoAdvIRLScenarioStats(ScenarioStats):
                 data["success_rate"] = float(
                     path[a_id]["env_infos"][-1]["reached_goal"]
                 )
-                data["collision_rate"] = float(path[a_id]["env_infos"][-1]["collision"])
+                collision_time = 0
+                for i in range(len(path[a_id]["env_infos"])):
+                    collision_time += float(path[a_id]["env_infos"][i]["collision"])
+                data["collision_time"] = collision_time
+                collision_rate = 1 if collision_time > 0 else 0
+                data["collision_rate"] = collision_rate
+
                 dist_to_hist_cur_pos = []
                 for i in range(len(path[a_id]["env_infos"])):
                     dist = path[a_id]["env_infos"][i]["dist_to_hist_cur_pos"]
@@ -185,10 +200,13 @@ class InfoAdvIRLScenarioStats(ScenarioStats):
                     if value is None:
                         continue
                     all_attr = getattr(
-                        self, "all_scenarios_" + ScenarioStats._attr_mapping[name]
+                        self,
+                        "all_scenarios_"
+                        + InfoAdvIRLScenarioWiseStats._attr_mapping[name],
                     )
                     scenario_attr = getattr(
-                        self, "scenario_" + ScenarioStats._attr_mapping[name]
+                        self,
+                        "scenario_" + InfoAdvIRLScenarioWiseStats._attr_mapping[name],
                     )
                     all_attr[a_id] += value
                     scenario_attr[a_id][scenario_name] += value
@@ -200,7 +218,7 @@ class InfoAdvIRLScenarioStats(ScenarioStats):
 
 
 def get_generic_path_information(
-    paths, env, stat_prefix="", scenario_stats_class=ScenarioStats
+    paths, env, stat_prefix="", scenario_stats_class=ScenarioWiseStats
 ):
     """
     Get an OrderedDict with a bunch of statistic names and values.
@@ -237,6 +255,7 @@ def get_generic_path_information(
     scenario_stats.update(paths)
     success_rate_n = scenario_stats.get_stats("success_rate")
     collision_rate_n = scenario_stats.get_stats("collision_rate")
+    collision_time_n = scenario_stats.get_stats("collision_time")
     dist_to_hist_cur_pos_sum_n = scenario_stats.get_stats("dist_to_hist_cur_pos_sum")
     dist_to_hist_cur_pos_mean_n = scenario_stats.get_stats("dist_to_hist_cur_pos_mean")
     dist_to_hist_final_pos_n = scenario_stats.get_stats("dist_to_hist_final_pos")
@@ -260,6 +279,10 @@ def get_generic_path_information(
             statistics[
                 stat_prefix + f" {a_id} Collision Rate {scenario_name}"
             ] = collision_rate
+        for scenario_name, collision_time in collision_time_n[a_id].items():
+            statistics[
+                stat_prefix + f" {a_id} Collision Time {scenario_name}"
+            ] = collision_time
         for scenario_name, dist_to_hist_cur_pos_sum in dist_to_hist_cur_pos_sum_n[
             a_id
         ].items():

@@ -84,7 +84,8 @@ constants:
     env_creator: 'masmarts'
     scenario_names:
       - 'ngsim_i80'
-    env_kwargs: {}
+    env_kwargs:
+      collision_done: true
     training_env_specs:
       env_num: 20
       wait_num: 10

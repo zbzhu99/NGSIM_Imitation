@@ -41,6 +41,7 @@ class SMARTSImitation:
         feature_type: str = "radius",
         closest_neighbor_num: int = 6,
         use_rnn: bool = False,
+        collision_done: bool = True,
         envision: bool = False,
         envision_sim_name: str = None,
         envision_record_data_replay_path: str = None,
@@ -50,6 +51,7 @@ class SMARTSImitation:
         self.control_all_vehicles = control_all_vehicles
         self.obs_stack_size = obs_stack_size
         self.use_rnn = use_rnn
+        self.collision_done = collision_done
         self.traffic_name = traffic_name
 
         self.control_vehicle_num = self.n_agents = control_vehicle_num
@@ -72,7 +74,9 @@ class SMARTSImitation:
         self.aid_to_vid = {}
         self.agent_ids = [f"agent_{i}" for i in range(self.n_agents)]
 
-        self.agent_spec = agent.get_agent_spec(self.feature_list, closest_neighbor_num)
+        self.agent_spec = agent.get_agent_spec(
+            self.feature_list, closest_neighbor_num, collision_done
+        )
 
         feature_spaces = subscribe_features(
             self.feature_list, closest_neighbor_num=closest_neighbor_num
@@ -208,6 +212,8 @@ class SMARTSImitation:
                 ]
             )
             info_n[agent_id]["dist_to_hist_final_pos"] = dist_to_hist_final_pos
+            # print(f"vehicle: {vehicle_id}, sim_time: {self.smarts.elapsed_sim_time}, start_time: "
+            #       f"{self.vehicle_start_times[vehicle_id]}, cur_pos: {raw_position}, his_cur_pos: {hist_cur_position}")
 
         if self.time_slice:
             for agent_id in full_obs_n.keys():
