@@ -35,7 +35,6 @@ class Mlp(PyTorchModule):
         layer_norm=False,
         layer_norm_kwargs=None,
         batch_norm=False,
-        # batch_norm_kwargs=None,
         batch_norm_before_output_activation=False,
     ):
         self.save_init_params(locals())
@@ -51,9 +50,9 @@ class Mlp(PyTorchModule):
         self.layer_norm = layer_norm
         self.batch_norm = batch_norm
         self.batch_norm_before_output_activation = batch_norm_before_output_activation
-        self.fcs = []
-        self.layer_norms = []
-        self.batch_norms = []
+        self.fcs = nn.ModuleList()
+        self.layer_norms = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
         in_size = input_size
 
         for i, next_size in enumerate(hidden_sizes):
@@ -61,28 +60,25 @@ class Mlp(PyTorchModule):
             in_size = next_size
             hidden_init(fc.weight)
             fc.bias.data.fill_(b_init_value)
-            self.__setattr__("fc{}".format(i), fc)
             self.fcs.append(fc)
 
             if self.layer_norm:
                 ln = LayerNorm(next_size)
-                self.__setattr__("layer_norm{}".format(i), ln)
                 self.layer_norms.append(ln)
 
             if self.batch_norm:
                 bn = BatchNorm1d(next_size)
-                self.__setattr__("batch_norm{}".format(i), bn)
                 self.batch_norms.append(bn)
 
         if self.batch_norm_before_output_activation:
             bn = BatchNorm1d(output_size)
-            self.__setattr__("batch_norm_last", bn)
             self.batch_norms.append(bn)
 
         self.last_fc = nn.Linear(in_size, output_size)
         self.last_fc.weight.data.uniform_(-init_w, init_w)
         self.last_fc.bias.data.uniform_(-init_w, init_w)
 
+    @torch.jit.ignore
     def forward(self, input, return_preactivations=False):
         h = input
         for i, fc in enumerate(self.fcs):
@@ -100,6 +96,19 @@ class Mlp(PyTorchModule):
             return output, preactivation
         else:
             return output
+
+    @torch.jit.export
+    def jit_forward(self, input):
+        assert self.layer_norm is False
+        assert self.batch_norm is False
+        assert self.batch_norm_before_output_activation is False
+        h = input
+        for i, fc in enumerate(self.fcs):
+            h = fc(h)
+            h = self.hidden_activation(h)
+        preactivation = self.last_fc(h)
+        output = self.output_activation(preactivation)
+        return output
 
 
 class ConditionalMlp(PyTorchModule):
@@ -134,12 +143,12 @@ class ConditionalMlp(PyTorchModule):
         self.layer_norm = layer_norm
         self.batch_norm = batch_norm
         self.batch_norm_before_output_activation = batch_norm_before_output_activation
-        self.input_layer_norms = []
-        self.input_batch_norms = []
-        self.latent_layer_norms = []
-        self.latent_batch_norms = []
-        self.input_encoder_fcs = []
-        self.latent_encoder_fcs = []
+        self.input_layer_norms = nn.ModuleList()
+        self.input_batch_norms = nn.ModuleList()
+        self.latent_layer_norms = nn.ModuleList()
+        self.latent_batch_norms = nn.ModuleList()
+        self.input_encoder_fcs = nn.ModuleList()
+        self.latent_encoder_fcs = nn.ModuleList()
 
         in_size = input_size
         for i, next_size in enumerate(input_hidden_sizes):
@@ -147,15 +156,12 @@ class ConditionalMlp(PyTorchModule):
             in_size = next_size
             ptu.fanin_init(fc.weight)
             fc.bias.data.fill_(0.1),
-            self.__setattr__("input_fc{}".format(i), fc)
             self.input_encoder_fcs.append(fc)
             if self.layer_norm:
                 ln = LayerNorm(next_size)
-                self.__setattr__("input_layer_norm{}".format(i), ln)
                 self.input_layer_norms.append(ln)
             if self.batch_norm:
                 bn = BatchNorm1d(next_size)
-                self.__setattr__("input_batch_norm{}".format(i), bn)
                 self.input_batch_norms.append(bn)
 
         in_size = latent_variable_num
@@ -164,15 +170,12 @@ class ConditionalMlp(PyTorchModule):
             in_size = next_size
             ptu.fanin_init(fc.weight)
             fc.bias.data.fill_(0.1),
-            self.__setattr__("latent_fc{}".format(i), fc)
             self.latent_encoder_fcs.append(fc)
             if self.layer_norm:
                 ln = LayerNorm(next_size)
-                self.__setattr__("latent_layer_norm{}".format(i), ln)
                 self.latent_layer_norms.append(ln)
             if self.batch_norm:
                 bn = BatchNorm1d(next_size)
-                self.__setattr__("latent_batch_norm{}".format(i), bn)
                 self.latent_batch_norms.append(bn)
 
         if len(input_hidden_sizes) > 0 and len(latent_hidden_sizes) > 0:
@@ -191,12 +194,12 @@ class ConditionalMlp(PyTorchModule):
         self.last_fc.weight.data.uniform_(-init_w, init_w)
         self.last_fc.bias.data.uniform_(-init_w, init_w)
 
+    @torch.jit.ignore
     def forward(
         self,
         input,
-        latent_variable=None,
+        latent_variable,
         return_preactivations=False,
-        ignore_last_fc=False,
     ):
         h_input = input
         for i, fc in enumerate(self.input_encoder_fcs):
@@ -224,10 +227,6 @@ class ConditionalMlp(PyTorchModule):
 
         h = torch.cat([h_input, h_latent], dim=-1)
 
-        if ignore_last_fc:
-            assert return_preactivations == False
-            return h
-
         preactivation = self.last_fc(h)
         if self.batch_norm_before_output_activation:
             preactivation = self.last_batch_norm(preactivation)
@@ -237,11 +236,52 @@ class ConditionalMlp(PyTorchModule):
         else:
             return output
 
+    @torch.jit.export
+    def jit_forward(
+        self,
+        input,
+        latent_variable,
+    ):
+        """
+        torch.jit does not support condition control (such as if ... else ...)
+        """
+        assert self.batch_norm is False
+        assert self.layer_norm is False
+        assert self.batch_norm_before_output_activation is False
+
+        h_input = input
+        for i, fc in enumerate(self.input_encoder_fcs):
+            h_input = fc(h_input)
+            h_input = self.hidden_activation(h_input)
+
+        if len(latent_variable.shape) > 1:
+            latent_variable = latent_variable.squeeze()
+        assert len(latent_variable.shape) == 1
+
+        h_latent = F.one_hot(
+            latent_variable.long(), num_classes=self.latent_variable_num
+        ).float()
+        for i, fc in enumerate(self.latent_encoder_fcs):
+            h_latent = fc(h_latent)
+            h_latent = self.hidden_activation(h_latent)
+
+        h = torch.cat([h_input, h_latent], dim=-1)
+
+        preactivation = self.last_fc(h)
+        output = self.output_activation(preactivation)
+        return output
+
 
 class FlattenConditionalMlp(ConditionalMlp):
+    @torch.jit.ignore
     def forward(self, *inputs, **kwargs):
         flat_inputs = torch.cat(inputs, dim=1)
         return super().forward(flat_inputs, **kwargs)
+
+    @torch.jit.export
+    def jit_forward(self, *inputs, **kwargs):
+        flat_inputs = torch.cat(inputs, dim=1)
+        return super().jit_forward(flat_inputs, **kwargs)
 
 
 class ConvNet(PyTorchModule):
@@ -297,6 +337,7 @@ class ConvNet(PyTorchModule):
         self.last_fc.weight.data.uniform_(-init_w, init_w)
         self.last_fc.bias.data.uniform_(-init_w, init_w)
 
+    @torch.jit.ignore
     def forward(self, input, return_preactivations=False):
         h = input
         for conv in self.convs:
@@ -313,15 +354,35 @@ class ConvNet(PyTorchModule):
         else:
             return output
 
+    @torch.jit.export
+    def jit_forward(self, input):
+        h = input
+        for conv in self.convs:
+            h = conv(h)
+            h = self.hidden_activation(h)
+        h = h.view(h.size(0), -1)
+        for i, fc in enumerate(self.fcs):
+            h = fc(h)
+            h = self.hidden_activation(h)
+        preactivation = self.last_fc(h)
+        output = self.output_activation(preactivation)
+        return output
+
 
 class FlattenMlp(Mlp):
     """
     Flatten inputs along dimension 1 and then pass through MLP.
     """
 
+    @torch.jit.ignore
     def forward(self, *inputs, **kwargs):
         flat_inputs = torch.cat(inputs, dim=1)
         return super().forward(flat_inputs, **kwargs)
+
+    @torch.jit.export
+    def forward(self, *inputs, **kwargs):
+        flat_inputs = torch.cat(inputs, dim=1)
+        return super().jit_forward(flat_inputs, **kwargs)
 
 
 class MlpPolicy(Mlp, Policy):

@@ -9,7 +9,6 @@ from rlkit.torch.common.distributions import ReparamTanhMultivariateNormal
 from rlkit.torch.common.distributions import ReparamMultivariateNormalDiag
 from rlkit.torch.core import PyTorchModule
 
-
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
 
@@ -238,13 +237,16 @@ class ReparamTanhMultivariateGaussianPolicy(Mlp, ExplorationPolicy):
         else:
             self.action_log_std = nn.Parameter(torch.zeros(1, action_dim))
 
+    @torch.jit.ignore
     def get_action(self, obs_np, deterministic=False):
         actions = self.get_actions(obs_np[None], deterministic=deterministic)
         return actions[0, :], {}
 
+    @torch.jit.ignore
     def get_actions(self, obs_np, deterministic=False):
         return self.eval_np(obs_np, deterministic=deterministic)[0]
 
+    @torch.jit.ignore
     def forward(
         self, obs, deterministic=False, return_log_prob=False, return_tanh_normal=False
     ):
@@ -306,6 +308,19 @@ class ReparamTanhMultivariateGaussianPolicy(Mlp, ExplorationPolicy):
             pre_tanh_value,
         )
 
+    @torch.jit.export
+    def jit_forward(self, obs):
+        """torch.jit does not support condition control
+        :param obs: Observation
+        """
+        h = obs
+        for i, fc in enumerate(self.fcs):
+            h = self.hidden_activation(fc(h))
+        mean = self.last_fc(h)
+        action = torch.tanh(mean)
+        return action
+
+    @torch.jit.ignore
     def get_log_prob_entropy(self, obs, acts):
         h = obs
         for i, fc in enumerate(self.fcs):
@@ -326,6 +341,7 @@ class ReparamTanhMultivariateGaussianPolicy(Mlp, ExplorationPolicy):
 
         return log_prob, entropy
 
+    @torch.jit.ignore
     def get_log_prob(self, obs, acts, return_normal_params=False):
         h = obs
         for i, fc in enumerate(self.fcs):
@@ -383,11 +399,12 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
         super().__init__()
 
         self.mlp = ConditionalMlp(
-            input_hidden_sizes=obs_hidden_sizes,
+            input_hidden_sizes=obs_hidden_sizes[:-1],
             input_size=obs_dim,
-            output_size=action_dim,
+            output_size=obs_hidden_sizes[-1],
             latent_variable_num=latent_variable_num,
             latent_hidden_sizes=latent_hidden_sizes,
+            output_activation=hidden_activation,
             **kwargs,
         )
 
@@ -395,7 +412,7 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
         self.conditioned_std = conditioned_std
         self.latent_variable_num = latent_variable_num
         self.hidden_activation = hidden_activation
-        self.last_hidden_size = self.mlp.last_hidden_size
+        self.last_hidden_size = self.mlp.output_size
 
         self.last_fc = nn.Linear(self.last_hidden_size, action_dim)
 
@@ -406,15 +423,18 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
         else:
             self.action_log_std = nn.Parameter(torch.zeros(1, action_dim))
 
+    @torch.jit.ignore
     def get_action(self, obs_np, latent_variable_np, deterministic=False):
         actions = self.get_actions(
             obs_np[None], latent_variable_np[None], deterministic=deterministic
         )
         return actions[0, :], {}
 
+    @torch.jit.ignore
     def get_actions(self, obs_np, latent_variable_np, deterministic=False):
         return self.eval_np(obs_np, latent_variable_np, deterministic=deterministic)[0]
 
+    @torch.jit.ignore
     def forward(
         self,
         obs,
@@ -430,7 +450,7 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
         :param return_log_prob: If True, return a sample and its log probability
         """
 
-        h = self.mlp(obs, latent_variable, ignore_last_fc=True)
+        h = self.mlp(obs, latent_variable)
         mean = self.last_fc(h)
 
         if self.conditioned_std:
@@ -479,8 +499,16 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
             pre_tanh_value,
         )
 
+    @torch.jit.export
+    def jit_forward(self, obs, latent_variable):
+        h = self.mlp.jit_forward(obs, latent_variable)
+        mean = self.last_fc(h)
+        action = torch.tanh(mean)
+        return action
+
+    @torch.jit.ignore
     def get_log_prob_entropy(self, obs, latent_variable, acts):
-        h = self.mlp(obs, latent_variable, ignore_last_fc=True)
+        h = self.mlp(obs, latent_variable)
         mean = self.last_fc(h)
 
         if self.conditioned_std:
@@ -498,8 +526,9 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
 
         return log_prob, entropy
 
+    @torch.jit.ignore
     def get_log_prob(self, obs, latent_variable, acts, return_normal_params=False):
-        h = self.mlp(obs, latent_variable, ignore_last_fc=True)
+        h = self.mlp(obs, latent_variable)
         mean = self.last_fc(h)
 
         if self.conditioned_std:
