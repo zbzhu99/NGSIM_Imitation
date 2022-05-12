@@ -65,6 +65,7 @@ class MAAdvIRL(TorchBaseAlgorithm):
             "gail",
             "fairl",
             "gail2",
+            "gail3",
         ], "Invalid adversarial irl algorithm!"
         super().__init__(**kwargs)
 

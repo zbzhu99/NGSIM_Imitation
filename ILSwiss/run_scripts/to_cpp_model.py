@@ -13,7 +13,7 @@ sys.path.insert(0, parentdir)
 print(sys.path)
 
 configs = {
-    "policy_input_path": "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/0505/ILSwiss/logs/gail-smarts-all-scenarios-cutin--scale--terminal--gp-4.0--rs-4.0--trajnum--1--stack-1/gail_smarts_all_scenarios_cutin--scale--terminal--gp-4.0--rs-4.0--trajnum--1--stack-1_2022_05_11_10_08_21_0000--s-0/params.pkl",
+    "policy_input_path": "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/0505/ILSwiss/logs/gail-smarts-all-scenarios-cutin--scale--terminal--gp-4.0--rs-4.0--trajnum--1--stack-1/gail_smarts_all_scenarios_cutin--scale--terminal--gp-4.0--rs-4.0--trajnum--1--stack-1_2022_05_11_10_51_35_0000--s-0/params.pkl",
     "polity_output_path": "./cpp_model/cpp_model.ckpt",
     "stats_input_path": "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/0505/ILSwiss/demos/ngsim_i80_ngsim_us101/smarts_radius_stack-1_cutin.pkl",
     "stats_output_path": "./cpp_model/stats.json",
@@ -29,7 +29,9 @@ def save_policy():
 
     policy = joblib.load(input_path)["policy_0"]["policy"]
     policy.to("cpu")
+
     policy_script_model = torch.jit.script(policy)
+    print(f"dir(ScriptPolicyModel): {dir(policy_script_model)}")
     print(f"ScriptPolicyModel: {policy_script_model}")
     policy_script_model.save(output_path)
     print("save policy finished!")
@@ -55,9 +57,15 @@ def save_stats():
     obs_mean, obs_std = np.mean(obs, axis=0), np.std(obs, axis=0)
     mean = obs_mean.tolist()
     std = obs_std.tolist()
+
+    action_min = [-8.0, -2.5]
+    action_max = [8.0, 2.5]
+
     stats = {
         "mean": mean,
         "std": std,
+        "action_min": action_min,
+        "action_max": action_max,
     }
     shape = {key: len(value) for key, value in stats.items()}
     with open(output_path, "w") as f:

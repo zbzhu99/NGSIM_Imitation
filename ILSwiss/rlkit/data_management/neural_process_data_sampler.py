@@ -2,8 +2,6 @@ import numpy as np
 from numpy.random import choice
 from numpy.random import randint
 
-from rlkit.data_management.replay_buffer import ReplayBuffer
-
 import torch
 from torch.autograd import Variable
 

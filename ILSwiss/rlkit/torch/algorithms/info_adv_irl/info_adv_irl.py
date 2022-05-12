@@ -168,6 +168,9 @@ class InfoAdvIRL(AdvIRL):
             policy_batch["rewards"] = F.softplus(
                 disc_logits, beta=-1
             )  # F.softplus(disc_logits, beta=-1)
+        elif self.mode == "gail3":  # log D < 0
+            origin_reward = F.softplus(disc_logits, beta=-1)
+            policy_batch["rewards"] = torch.clamp(origin_reward + 2.5, min=0, max=2.5)
         else:  # fairl
             policy_batch["rewards"] = torch.exp(disc_logits) * (-1.0 * disc_logits)
 
@@ -195,6 +198,14 @@ class InfoAdvIRL(AdvIRL):
                 log_posterior.shape == policy_batch["rewards"].shape
             ), "{}, {}".format(log_posterior.shape, policy_batch["rewards"].shape)
             policy_batch["rewards"] += self.post_r_coef * log_posterior
+
+        elif self.mode == "gail3":  # log D < 0
+            log_posterior = self.posterior_trainer_n[
+                policy_id
+            ].target_posterior_model.get_log_posterior(obs, acts, latents)
+            policy_batch["rewards"] += self.post_r_coef * torch.clamp(
+                log_posterior + 2.5, min=0, max=2.5
+            )
 
         if self.clip_max_rews:
             policy_batch["rewards"] = torch.clamp(

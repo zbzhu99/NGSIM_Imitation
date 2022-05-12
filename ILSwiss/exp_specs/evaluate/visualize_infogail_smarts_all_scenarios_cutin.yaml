@@ -1,5 +1,5 @@
 meta_data:
-  script_path: run_scripts/visualize_smarts.py
+  script_path: run_scripts/visualize_smarts_infogail.py
   exp_name: vis_policy_smarts
   description: Save policy rollout videos in SMARTS simulator
   num_workers: 1 # 64
@@ -10,12 +10,12 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_i80_radius_stack_1'
+  expert_name: 'smarts_all_scenarios_radius_stack_1_cutin'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
 
-  log_path: "/home/liuyuecheng/i80_fixbug_result/buf2M_dis64x2_policy_512x3_r2_alpha1"
+  log_path: "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/0505/ILSwiss/logs/gail2/gail_smarts_all_scenarios_cutin--scale--terminal--gp-4.0--rs-4.0--trajnum--1--stack-1_2022_05_11_10_37_15_0000--s-0/"
 
   eval_deterministic: true
 
@@ -25,12 +25,13 @@ constants:
     env_creator: "smarts"
     scenario_names:
       - "ngsim_i80"
+      - "ngsim_us101"
     env_kwargs:
       feature_type: "radius"
       closest_neighbor_num: 8
       control_all_vehicles: False
-      control_vehicle_num: 1
       collision_done: true
+      control_vehicle_num: 1
       envision: True
       envision_sim_name: "gail_i80"
       envision_record_data_replay_path: "./envision_output"
