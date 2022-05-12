@@ -5,7 +5,7 @@ from smarts.core.agent_interface import DoneCriteria
 from smarts_imitation.utils import adapter
 
 
-def get_agent_spec(feature_list, closest_neighbor_num, collision_done):
+def get_agent_spec(feature_list, closest_neighbor_num, collision_done=True):
     done_criteria = DoneCriteria(
         collision=collision_done,
         off_road=collision_done,

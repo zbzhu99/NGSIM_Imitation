@@ -14,14 +14,9 @@ from smarts_imitation.utils.feature_group import FeatureGroup
 from smarts.core.utils.math import rounder_for_dt
 from smarts_imitation.utils.vehicle_info import VehiclePosition
 from smarts.core.plan import (
-    EndlessGoal,
-    LapMission,
     Mission,
-    PositionalGoal,
-    Start,
     TraverseGoal,
     VehicleSpec,
-    Via,
     default_entry_tactic,
 )
 

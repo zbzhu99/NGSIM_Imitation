@@ -28,7 +28,7 @@ constants:
   policy_obs_hidden_size: 512
   policy_obs_num_hidden_layers: 3
   policy_latent_hidden_size: 32
-  policy_latent_num_hidden_layers: 1
+  policy_latent_num_hidden_layers: 2
 
   categorical_latent_num: 1
   categorical_class_num: 2
@@ -72,7 +72,7 @@ constants:
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
     posterior_optim_batch_size: 256
-    post_r_coef: 0.0
+    post_r_coef: 2.0
 
     save_best: true
     save_epoch: false
