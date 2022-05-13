@@ -25,7 +25,7 @@ from rlkit.torch.common.policies import MakeDeterministic
 
 from smarts_imitation import ScenarioZoo
 
-latent = 0
+latent = [1, 0, 0, 0, 0, 0]
 
 
 def experiment(variant):
@@ -109,9 +109,7 @@ def experiment(variant):
                     stacked_observations = np.stack(
                         [obs for obs in observation_n.values()], axis=0
                     )
-                    stacked_latents = np.array([latent for _ in observation_n]).reshape(
-                        -1
-                    )
+                    stacked_latents = np.array([latent for _ in observation_n])
                     stacked_actions = policy.get_actions(
                         stacked_observations, stacked_latents
                     )
