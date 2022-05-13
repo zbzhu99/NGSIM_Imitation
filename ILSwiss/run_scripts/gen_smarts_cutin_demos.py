@@ -164,7 +164,7 @@ def work_process(
                 print(
                     f"Traffic: {traffic_name}: Agent-{vehicle} Ended, "
                     f"total {done_vehicle_num} Ended. "
-                    f"cutin steps: {traffic_cutin_steps}"
+                    f"cutin steps: {traffic_cutin_steps}, "
                     f"ttc: {ttc}",
                 )
 
@@ -254,7 +254,9 @@ def sample_cutin_demos(
             cutin_demo_trajs[vehicle_info] = traj
             all_vehicle_infos.append(vehicle_info)
 
-            print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}, last ttc: {vehicle_info.ttc}")
+            print(
+                f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}, last ttc: {vehicle_info.ttc}"
+            )
         except queue.Empty:
             print("Queue empty! stop collecting.")
             break
