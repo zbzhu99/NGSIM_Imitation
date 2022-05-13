@@ -235,6 +235,7 @@ def work_process(
                     end_time=None,
                     scenario_name=scenario_name,
                     traffic_name=traffic_name,
+                    ttc=None,
                 )
                 trajs_queue.put((vehicle_info, cur_path_builder))
                 print(f"{scenario_name}-{traffic_name} Agent-{vehicle} Ended")

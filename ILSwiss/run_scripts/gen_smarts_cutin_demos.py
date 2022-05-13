@@ -136,6 +136,7 @@ def work_process(
                     cutin_steps,
                     start_time,
                     end_time,
+                    ttc,
                 ) = get_single_cutin_demo(
                     original_path,
                     angle_threshold,
@@ -151,6 +152,7 @@ def work_process(
                         end_time=end_time,
                         scenario_name=scenario_name,
                         traffic_name=traffic_name,
+                        ttc=ttc,
                     )
                     cutin_trajs_queue.put(
                         (
@@ -162,7 +164,8 @@ def work_process(
                 print(
                     f"Traffic: {traffic_name}: Agent-{vehicle} Ended, "
                     f"total {done_vehicle_num} Ended. "
-                    f"cutin steps: {traffic_cutin_steps}",
+                    f"cutin steps: {traffic_cutin_steps}"
+                    f"ttc: {ttc}",
                 )
 
         """ Store data in the corresponding path builder. """
@@ -198,14 +201,16 @@ def sample_cutin_demos(
     save_path,
     test_ratio,
     obs_stack_size,
-    feature_list,
+    feature_type,
     closest_neighbor_num,
     use_rnn,
     angle_threshold,
     cutin_dist_threshold,
     steps_before_cutin,
     steps_after_cutin,
+    divide_by_ttc,
 ):
+    feature_list = FeatureGroup[feature_type]
     scenario_iterator = Scenario.scenario_variations(
         scenarios_paths, list([]), shuffle_scenarios=False, circular=False
     )  # scenarios with different traffic histories.
@@ -237,7 +242,8 @@ def sample_cutin_demos(
 
     # Do not call p.join().
     cutin_demo_trajs = {}
-    cutin_vehicles = defaultdict(partial(defaultdict, list))
+    all_vehicle_infos = []
+
     while True:
         try:
             if len(cutin_demo_trajs) == 0:
@@ -246,30 +252,150 @@ def sample_cutin_demos(
                 vehicle_info, traj = trajs_queue.get(block=True, timeout=600)
             assert vehicle_info not in cutin_demo_trajs, f"vehicle_info: {vehicle_info}"
             cutin_demo_trajs[vehicle_info] = traj
-            cutin_vehicles[vehicle_info.scenario_name][
-                vehicle_info.traffic_name
-            ].append(vehicle_info)
+            all_vehicle_infos.append(vehicle_info)
+
             print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}")
         except queue.Empty:
             print("Queue empty! stop collecting.")
             break
     print(f"Append to buffer finished! total {len(cutin_demo_trajs)} trajectories!")
 
-    cutin_train_vehicles, cutin_test_vehicles = split_train_test(
-        cutin_vehicles, test_ratio
+    if divide_by_ttc:
+        all_vehicle_infos.sort(key=lambda x: x.ttc)
+        half_num = int(len(all_vehicle_infos) / 2)
+
+        cutin_vehicles_1 = defaultdict(partial(defaultdict, list))
+        cutin_vehicles_2 = defaultdict(partial(defaultdict, list))
+
+        for vehicle_info in all_vehicle_infos[:half_num]:
+            cutin_vehicles_1[vehicle_info.scenario_name][
+                vehicle_info.traffic_name
+            ].append(vehicle_info)
+        for vehicle_info in all_vehicle_infos[half_num:]:
+            cutin_vehicles_2[vehicle_info.scenario_name][
+                vehicle_info.traffic_name
+            ].append(vehicle_info)
+
+        cutin_train_vehicles_1, cutin_test_vehicles_1 = split_train_test(
+            cutin_vehicles_1, test_ratio
+        )
+        cutin_train_vehicles_2, cutin_test_vehicles_2 = split_train_test(
+            cutin_vehicles_2, test_ratio
+        )
+        with open(save_path / "train_vehicles_cutin_ttc_divide_1.pkl", "wb") as f:
+            pickle.dump(cutin_train_vehicles_1, f)
+        with open(save_path / "test_vehicles_cutin_ttc_divide_1.pkl", "wb") as f:
+            pickle.dump(cutin_test_vehicles_1, f)
+        with open(save_path / "train_vehicles_cutin_ttc_divide_2.pkl", "wb") as f:
+            pickle.dump(cutin_train_vehicles_2, f)
+        with open(save_path / "test_vehicles_cutin_ttc_divide_2.pkl", "wb") as f:
+            pickle.dump(cutin_test_vehicles_2, f)
+
+        cutin_train_demo_trajs_1 = []
+        cutin_train_demo_trajs_2 = []
+        for scenario_name, traffics in cutin_train_vehicles_1.items():
+            for traffic_name, vehicles in traffics.items():
+                for vehicle in vehicles:
+                    cutin_train_demo_trajs_1.append(cutin_demo_trajs[vehicle])
+        file_save_path = Path(save_path).joinpath(
+            "smarts_{}_stack-{}_cutin_ttc_divide_1.pkl".format(
+                feature_type,
+                obs_stack_size,
+            )
+        )
+        with open(
+            file_save_path,
+            "wb",
+        ) as f:
+            pickle.dump(cutin_train_demo_trajs_1, f)
+        for scenario_name, traffics in cutin_train_vehicles_2.items():
+            for traffic_name, vehicles in traffics.items():
+                for vehicle in vehicles:
+                    cutin_train_demo_trajs_2.append(cutin_demo_trajs[vehicle])
+        file_save_path = Path(save_path).joinpath(
+            "smarts_{}_stack-{}_cutin_ttc_divide_2.pkl".format(
+                feature_type,
+                obs_stack_size,
+            )
+        )
+        with open(
+            file_save_path,
+            "wb",
+        ) as f:
+            pickle.dump(cutin_train_demo_trajs_2, f)
+
+    else:
+        cutin_vehicles = defaultdict(partial(defaultdict, list))
+        for vehicle_info in all_vehicle_infos:
+            cutin_vehicles[vehicle_info.scenario_name][
+                vehicle_info.traffic_name
+            ].append(vehicle_info)
+        cutin_train_vehicles, cutin_test_vehicles = split_train_test(
+            cutin_vehicles, test_ratio
+        )
+
+        with open(save_path / "train_vehicles_cutin.pkl", "wb") as f:
+            pickle.dump(cutin_train_vehicles, f)
+        with open(save_path / "test_vehicles_cutin.pkl", "wb") as f:
+            pickle.dump(cutin_test_vehicles, f)
+
+        cutin_train_demo_trajs = []
+        for scenario_name, traffics in cutin_train_vehicles.items():
+            for traffic_name, vehicles in traffics.items():
+                for vehicle in vehicles:
+                    cutin_train_demo_trajs.append(cutin_demo_trajs[vehicle])
+        file_save_path = Path(save_path).joinpath(
+            "smarts_{}_stack-{}_cutin.pkl".format(
+                feature_type,
+                obs_stack_size,
+            )
+        )
+        with open(
+            file_save_path,
+            "wb",
+        ) as f:
+            pickle.dump(cutin_train_demo_trajs, f)
+
+
+def _get_lane_change_ttc(raw_observations):
+    """Args:
+    raw_observations: raw_observation of ego vehicle after lane change.
+    """
+    ttc_padding = 1000
+
+    ego = raw_observations.ego_vehicle_state
+    neighbor_vehicle_states = raw_observations.neighborhood_vehicle_states
+
+    nearst_v = None
+    nearst_distance = np.inf
+    for v in neighbor_vehicle_states:
+        if v.lane_index != ego.lane_index:
+            continue
+        dist = np.linalg.norm(v.position[:2] - ego.position[:2], 2)
+        if dist < nearst_distance:
+            nearst_distance = dist
+            nearst_v = v
+
+    if nearst_v is None:
+        return ttc_padding
+
+    ego_rel_pos_to_v = np.array(
+        [ego.position[0] - nearst_v.position[0], ego.position[1] - nearst_v.position[1]]
     )
+    ego_abs_radians_to_v = vec_to_radians(ego_rel_pos_to_v)
+    ego_rel_radians_to_v = _legalize_angle(ego_abs_radians_to_v - nearst_v.heading)
+    distance_project = nearst_distance * math.cos(ego_rel_radians_to_v)
 
-    with open(save_path / "train_vehicles_cutin.pkl", "wb") as f:
-        pickle.dump(cutin_train_vehicles, f)
-    with open(save_path / "test_vehicles_cutin.pkl", "wb") as f:
-        pickle.dump(cutin_test_vehicles, f)
-
-    cutin_train_demo_trajs = []
-    for scenario_name, traffics in cutin_train_vehicles.items():
-        for traffic_name, vehicles in traffics.items():
-            for vehicle in vehicles:
-                cutin_train_demo_trajs.append(cutin_demo_trajs[vehicle])
-    return cutin_train_demo_trajs
+    heading_rel_angle = _legalize_angle(nearst_v.heading - ego.heading)
+    ego_speed_project = ego.speed * math.cos(heading_rel_angle)
+    speed_delta = nearst_v.speed - ego_speed_project
+    if np.abs(speed_delta) < 0.01:
+        ttc = ttc_padding
+    else:
+        ttc = distance_project / speed_delta
+        if ttc < 0:
+            ttc = ttc_padding
+    return ttc
 
 
 def _is_lane_change_valid(raw_observations, angle_threshold, cutin_dist_threshold):
@@ -335,8 +461,13 @@ def get_single_cutin_demo(
         original_path, angle_threshold, cutin_dist_threshold
     )
     if len(lane_change_steps) == 0:  # no lane change
-        return None, 0, None, None
+        return None, 0, None, None, None
     cur_path_builder = PathBuilder(["agent_0"])
+
+    ttc = np.inf
+    for i in lane_change_steps:
+        ttc_i = _get_lane_change_ttc(original_path[i]["raw_next_observations"])
+        ttc = min(ttc_i, ttc)
 
     start_time = np.inf
     end_time = -np.inf
@@ -359,9 +490,9 @@ def get_single_cutin_demo(
             end_time = max(end_time, original_path[i]["elapsed_sim_time"])
 
     if end_time - start_time < 0.5:
-        return None, 0, None, None
+        return None, 0, None, None, None
 
-    return cur_path_builder, cutin_steps, start_time, end_time
+    return cur_path_builder, cutin_steps, start_time, end_time, ttc
 
 
 def experiment(specs):
@@ -373,18 +504,19 @@ def experiment(specs):
     scenarios_paths = [
         ScenarioZoo.get_scenario(scenario_name) for scenario_name in scenario_names
     ]
-    cutin_demo_trajs = sample_cutin_demos(
+    sample_cutin_demos(
         scenarios_paths,
         save_path,
         test_ratio=specs["test_ratio"],
         obs_stack_size=specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-        feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
+        feature_type=specs["env_specs"]["env_kwargs"]["feature_type"],
         closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
         use_rnn=specs["env_specs"]["env_kwargs"]["use_rnn"],
         angle_threshold=specs["env_specs"]["env_kwargs"]["angle_threshold"],
         cutin_dist_threshold=specs["env_specs"]["env_kwargs"]["cutin_dist_threshold"],
         steps_before_cutin=specs["env_specs"]["env_kwargs"]["steps_before_cutin"],
         steps_after_cutin=specs["env_specs"]["env_kwargs"]["steps_after_cutin"],
+        divide_by_ttc=specs["env_specs"]["env_kwargs"]["divide_by_ttc"],
     )
 
     print(
@@ -392,18 +524,6 @@ def experiment(specs):
             specs["env_specs"]["env_kwargs"]["obs_stack_size"]
         )
     )
-
-    file_save_path = Path(save_path).joinpath(
-        "smarts_{}_stack-{}_cutin.pkl".format(
-            specs["env_specs"]["env_kwargs"]["feature_type"],
-            specs["env_specs"]["env_kwargs"]["obs_stack_size"],
-        )
-    )
-    with open(
-        file_save_path,
-        "wb",
-    ) as f:
-        pickle.dump(cutin_demo_trajs, f)
 
     return 1
 

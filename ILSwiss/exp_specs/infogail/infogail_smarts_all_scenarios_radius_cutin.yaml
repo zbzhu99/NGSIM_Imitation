@@ -72,7 +72,7 @@ constants:
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
     posterior_optim_batch_size: 256
-    post_r_coef: 2.0
+    post_r_coef: 5.0
 
     save_best: true
     save_epoch: false
