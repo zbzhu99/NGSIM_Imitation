@@ -254,7 +254,7 @@ def sample_cutin_demos(
             cutin_demo_trajs[vehicle_info] = traj
             all_vehicle_infos.append(vehicle_info)
 
-            print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}")
+            print(f"main process: collected cutin trajs num: {len(cutin_demo_trajs)}, last ttc: {vehicle_info.ttc}")
         except queue.Empty:
             print("Queue empty! stop collecting.")
             break

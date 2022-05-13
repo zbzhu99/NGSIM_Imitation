@@ -39,7 +39,7 @@ constants:
   posterior_hid_act: tanh
 
   adv_irl_params:
-    mode: 'gail3'
+    mode: 'gail'
     state_only: false
 
 
