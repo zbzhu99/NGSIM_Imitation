@@ -101,12 +101,18 @@ class AgentSimpleReplayBuffer(AgentReplayBuffer):
     """
 
     def __init__(
-        self, max_replay_buffer_size, observation_dim, action_dim, random_seed=1995
+        self,
+        max_replay_buffer_size,
+        observation_dim,
+        action_dim,
+        latent_dim,
+        random_seed=1995,
     ):
         self._np_rand_state = np.random.RandomState(random_seed)
 
         self._observation_dim = observation_dim
         self._action_dim = action_dim
+        self._latent_dim = latent_dim
         self._max_replay_buffer_size = max_replay_buffer_size
 
         if isinstance(observation_dim, tuple):
@@ -137,7 +143,7 @@ class AgentSimpleReplayBuffer(AgentReplayBuffer):
         # Make everything a 2D np array to make it easier for other code to
         # reason about the shape of the data
         self._rewards = np.zeros((max_replay_buffer_size, 1))
-        self._latents = np.zeros((max_replay_buffer_size, 1))
+        self._latents = np.zeros((max_replay_buffer_size, latent_dim))
         # self._terminals[i] = a terminal was received at time i
         self._terminals = np.zeros((max_replay_buffer_size, 1), dtype="uint8")
         self._timeouts = np.zeros((max_replay_buffer_size, 1), dtype="uint8")
@@ -192,7 +198,7 @@ class AgentSimpleReplayBuffer(AgentReplayBuffer):
         # Make everything a 2D np array to make it easier for other code to
         # reason about the shape of the data
         self._rewards = np.zeros((self._max_replay_buffer_size, 1))
-        self._latents = np.zeros((self._max_replay_buffer_size, 1))
+        self._latents = np.zeros((self._max_replay_buffer_size, self._latent_dim))
         # self._terminals[i] = a terminal was received at time i
         self._terminals = np.zeros((self._max_replay_buffer_size, 1), dtype="uint8")
         self._timeouts = np.zeros((self._max_replay_buffer_size, 1), dtype="uint8")
@@ -471,7 +477,12 @@ def get_dim(space):
 
 class AgentEnvReplayBuffer(AgentSimpleReplayBuffer):
     def __init__(
-        self, max_replay_buffer_size, observation_space, action_space, random_seed=1995
+        self,
+        max_replay_buffer_size,
+        observation_space,
+        action_space,
+        latent_dim,
+        random_seed=1995,
     ):
         """
         :param max_replay_buffer_size:
@@ -484,6 +495,7 @@ class AgentEnvReplayBuffer(AgentSimpleReplayBuffer):
             max_replay_buffer_size=max_replay_buffer_size,
             observation_dim=get_dim(self._ob_space),
             action_dim=get_dim(self._action_space),
+            latent_dim=latent_dim,
             random_seed=random_seed,
         )
 
@@ -501,7 +513,7 @@ class AgentEnvReplayBuffer(AgentSimpleReplayBuffer):
 
 
 class LatentEnvReplayBuffer:
-    def __init__(self, max_replay_buffer_size, env, random_seed=1995):
+    def __init__(self, max_replay_buffer_size, env, latent_dim, random_seed=1995):
         self._observation_space_n = env.observation_space_n
         self._action_space_n = env.action_space_n
         self.n_agents = env.n_agents
@@ -512,6 +524,7 @@ class LatentEnvReplayBuffer:
                 max_replay_buffer_size,
                 self._observation_space_n[a_id],
                 self._action_space_n[a_id],
+                latent_dim,
             )
             for a_id in self.agent_ids
         }

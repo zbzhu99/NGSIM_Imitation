@@ -30,6 +30,11 @@ from rlkit.torch.algorithms.info_adv_irl.posterior_models.simple_posterior_model
 )
 from rlkit.torch.algorithms.info_adv_irl.replay_buffer import LatentEnvReplayBuffer
 from rlkit.torch.algorithms.info_adv_irl.info_adv_irl import InfoAdvIRL
+from rlkit.torch.algorithms.info_adv_irl.distributions import (
+    Product,
+    Categorical,
+    Uniform,
+)
 from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv, EPS
 from smarts_imitation.utils.env_split import split_vehicles
 from rlkit.samplers import ConditionalPathSampler
@@ -107,6 +112,16 @@ def experiment(variant):
     disc_model_n = {}
     posterior_trainer_n = {}
 
+    dists = []
+    if variant["categorical_latent_num"] > 0:
+        dist = Categorical(dim=variant["categorical_class_num"])
+        dists.append(dist)
+    if variant["continous_latent_num"] > 0:
+        dist = Uniform(variant["continous_latent_num"])
+        dists.append(dist)
+    latent_distribution = Product(dists)
+    latent_input_dim = latent_distribution.dim
+
     for agent_id in env.agent_ids:
         policy_id = policy_mapping_dict.get(agent_id)
         if policy_id not in policy_trainer_n:
@@ -124,35 +139,35 @@ def experiment(variant):
             # build the policy models
             obs_net_size = variant["policy_obs_hidden_size"]
             obs_num_hidden = variant["policy_obs_num_hidden_layers"]
+
             latent_net_size = variant["policy_latent_hidden_size"]
             latent_num_hidden = variant["policy_latent_num_hidden_layers"]
-            latent_variable_num = variant["latent_variable_num"]
             qf1 = FlattenConditionalMlp(
                 input_hidden_sizes=obs_num_hidden * [obs_net_size],
                 input_size=obs_dim + action_dim,
                 output_size=1,
-                latent_variable_num=latent_variable_num,
+                latent_input_dim=latent_input_dim,
                 latent_hidden_sizes=latent_num_hidden * [latent_net_size],
             )
             qf2 = FlattenConditionalMlp(
                 input_hidden_sizes=obs_num_hidden * [obs_net_size],
                 input_size=obs_dim + action_dim,
                 output_size=1,
-                latent_variable_num=latent_variable_num,
+                latent_input_dim=latent_input_dim,
                 latent_hidden_sizes=latent_num_hidden * [latent_net_size],
             )
             vf = FlattenConditionalMlp(
                 input_hidden_sizes=obs_num_hidden * [obs_net_size],
                 input_size=obs_dim,
                 output_size=1,
-                latent_variable_num=latent_variable_num,
+                latent_input_dim=latent_input_dim,
                 latent_hidden_sizes=latent_num_hidden * [latent_net_size],
             )
             policy = ConditionalReparamTanhMultivariateGaussianPolicy(
                 obs_hidden_sizes=obs_num_hidden * [obs_net_size],
                 obs_dim=obs_dim,
                 action_dim=action_dim,
-                latent_variable_num=latent_variable_num,
+                latent_distribution=latent_distribution,
                 latent_hidden_sizes=latent_num_hidden * [latent_net_size],
             )
 
@@ -181,7 +196,7 @@ def experiment(variant):
             posterior_model = MlpPosterior(
                 obs_dim=obs_dim,
                 action_dim=action_dim,
-                latent_variable_num=latent_variable_num,
+                latent_distribution=latent_distribution,
                 num_layer_blocks=variant["posterior_num_hidden_layers"],
                 hid_dim=variant["posterior_hidden_size"],
                 hid_act=variant["posterior_hid_act"],
@@ -290,6 +305,7 @@ def experiment(variant):
     replay_buffer = LatentEnvReplayBuffer(
         variant["adv_irl_params"]["replay_buffer_size"],
         env,
+        latent_dim=latent_input_dim,
         random_seed=np.random.randint(10000),
     )
     algorithm = InfoAdvIRL(
@@ -305,7 +321,7 @@ def experiment(variant):
         eval_car_num=eval_car_num,
         eval_sampler_func=ConditionalPathSampler,
         replay_buffer=replay_buffer,
-        latent_variable_num=variant["latent_variable_num"],
+        latent_distribution=latent_distribution,
         **variant["adv_irl_params"],
     )
 

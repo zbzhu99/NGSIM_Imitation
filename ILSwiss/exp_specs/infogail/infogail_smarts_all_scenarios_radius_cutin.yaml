@@ -30,13 +30,16 @@ constants:
   policy_latent_hidden_size: 32
   policy_latent_num_hidden_layers: 1
 
-  latent_variable_num: 2
+  categorical_latent_num: 1
+  categorical_class_num: 2
+  continous_latent_num: 4
+
   posterior_hidden_size: 128
   posterior_num_hidden_layers: 2
   posterior_hid_act: tanh
 
   adv_irl_params:
-    mode: 'gail2'
+    mode: 'gail3'
     state_only: false
 
 
@@ -105,7 +108,7 @@ constants:
       closest_neighbor_num: 8
       obs_stack_size: 1
       feature_type: "radius"
-      collision_done: false
+      collision_done: true
     training_env_specs:
       env_num: 20
       wait_num: 10

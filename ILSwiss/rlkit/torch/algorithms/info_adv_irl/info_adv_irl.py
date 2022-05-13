@@ -54,7 +54,7 @@ class InfoAdvIRL(AdvIRL):
         disc_momentum=0.9,
         disc_optimizer_class=optim.Adam,
         post_r_coef=0.1,
-        latent_variable_num=4,
+        latent_distribution=None,
         use_grad_pen=True,
         grad_pen_weight=10,
         rew_clip_min=None,
@@ -84,13 +84,13 @@ class InfoAdvIRL(AdvIRL):
             **kwargs,
         )
 
-        self.eval_sampler._init_latent_variable_num(latent_variable_num)
+        self.eval_sampler._init_latent_distribution(latent_distribution)
         self.post_r_coef = post_r_coef
         self.posterior_trainer_n = posterior_trainer_n
         self.posterior_optim_batch_size = posterior_optim_batch_size
         self.num_post_updates_per_loop_iter = num_post_updates_per_loop_iter
 
-        self.latent_variable_num = latent_variable_num
+        self.latent_distribution = latent_distribution
         self.latents_n = np.array(
             [
                 {a_id: self._get_random_latent_variable() for a_id in self.agent_ids}
@@ -99,7 +99,13 @@ class InfoAdvIRL(AdvIRL):
         )
 
     def _get_random_latent_variable(self):
-        return np.random.randint(self.latent_variable_num)
+        latent = (
+            self.latent_distribution.sample_prior(batch_size=1)
+            .cpu()
+            .numpy()
+            .reshape(-1)
+        )
+        return latent
 
     def _end_epoch(self):
         for p_id in self.policy_ids:
@@ -585,7 +591,7 @@ class InfoAdvIRL(AdvIRL):
                 test_paths,
                 self.env,
                 stat_prefix="Test",
-                scenario_stats_class=eval_util.InfoAdvIRLScenarioWiseStats,
+                # scenario_stats_class=eval_util.InfoAdvIRLScenarioWiseStats,
             )
         )
 
@@ -595,7 +601,7 @@ class InfoAdvIRL(AdvIRL):
                     self._exploration_paths,
                     self.env,
                     stat_prefix="Exploration",
-                    scenario_stats_class=eval_util.InfoAdvIRLScenarioWiseStats,
+                    # scenario_stats_class=eval_util.InfoAdvIRLScenarioWiseStats,
                 )
             )
 

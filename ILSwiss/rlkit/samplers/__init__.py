@@ -376,8 +376,8 @@ class ConditionalPathSampler(PathSampler):
             render_kwargs=render_kwargs,
         )
 
-    def _init_latent_variable_num(self, latent_variable_num):
-        self.latent_variable_num = latent_variable_num
+    def _init_latent_distribution(self, latent_distribution):
+        self.latent_distribution = latent_distribution
         self.latents_n = np.array(
             [
                 {a_id: self._get_random_latent_variable() for a_id in self.agent_ids}
@@ -386,7 +386,13 @@ class ConditionalPathSampler(PathSampler):
         )
 
     def _get_random_latent_variable(self):
-        return np.random.randint(self.latent_variable_num)
+        latent = (
+            self.latent_distribution.sample_prior(batch_size=1)
+            .cpu()
+            .numpy()
+            .reshape(-1)
+        )
+        return latent
 
     def _get_action_and_info(
         self, observations_n: List[Dict[str, np.ndarray]], latents_n

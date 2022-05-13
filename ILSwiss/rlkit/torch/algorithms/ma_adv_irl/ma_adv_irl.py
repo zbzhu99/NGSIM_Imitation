@@ -487,6 +487,9 @@ class MAAdvIRL(TorchBaseAlgorithm):
             policy_batch["rewards"] = F.softplus(
                 disc_logits, beta=-1
             )  # F.softplus(disc_logits, beta=-1)
+        elif self.mode == "gail3":  # log D < 0
+            origin_reward = F.softplus(disc_logits, beta=-1)
+            policy_batch["rewards"] = torch.clamp(origin_reward + 2.5, min=0, max=2.5)
         else:  # fairl
             policy_batch["rewards"] = torch.exp(disc_logits) * (-1.0 * disc_logits)
 

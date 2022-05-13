@@ -387,7 +387,7 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
         obs_hidden_sizes,
         obs_dim,
         action_dim,
-        latent_variable_num,
+        latent_distribution,
         latent_hidden_sizes,
         init_w=1e-3,
         max_act=1.0,
@@ -398,11 +398,13 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
         self.save_init_params(locals())
         super().__init__()
 
+        self.latent_input_dim = latent_distribution.dim
+
         self.mlp = ConditionalMlp(
             input_hidden_sizes=obs_hidden_sizes[:-1],
             input_size=obs_dim,
             output_size=obs_hidden_sizes[-1],
-            latent_variable_num=latent_variable_num,
+            latent_input_dim=latent_distribution.dim,
             latent_hidden_sizes=latent_hidden_sizes,
             output_activation=hidden_activation,
             **kwargs,
@@ -410,7 +412,6 @@ class ConditionalReparamTanhMultivariateGaussianPolicy(
 
         self.max_act = max_act
         self.conditioned_std = conditioned_std
-        self.latent_variable_num = latent_variable_num
         self.hidden_activation = hidden_activation
         self.last_hidden_size = self.mlp.output_size
 

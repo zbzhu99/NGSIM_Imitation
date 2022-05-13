@@ -117,7 +117,7 @@ class ConditionalMlp(PyTorchModule):
         input_hidden_sizes,
         input_size,
         output_size,
-        latent_variable_num,
+        latent_input_dim,
         latent_hidden_sizes,
         init_w=3e-3,
         hidden_activation=F.relu,
@@ -136,7 +136,7 @@ class ConditionalMlp(PyTorchModule):
             layer_norm_kwargs = dict()
 
         self.input_size = input_size
-        self.latent_variable_num = latent_variable_num
+        self.latent_input_dim = latent_input_dim
         self.output_size = output_size
         self.hidden_activation = hidden_activation
         self.output_activation = output_activation
@@ -164,7 +164,7 @@ class ConditionalMlp(PyTorchModule):
                 bn = BatchNorm1d(next_size)
                 self.input_batch_norms.append(bn)
 
-        in_size = latent_variable_num
+        in_size = latent_input_dim
         for i, next_size in enumerate(latent_hidden_sizes):
             fc = nn.Linear(in_size, next_size)
             in_size = next_size
@@ -181,11 +181,11 @@ class ConditionalMlp(PyTorchModule):
         if len(input_hidden_sizes) > 0 and len(latent_hidden_sizes) > 0:
             self.last_hidden_size = input_hidden_sizes[-1] + latent_hidden_sizes[-1]
         elif len(input_hidden_sizes) > 0:
-            self.last_hidden_size = input_hidden_sizes[-1] + latent_variable_num
+            self.last_hidden_size = input_hidden_sizes[-1] + latent_input_dim
         elif len(latent_hidden_sizes) > 0:
             self.last_hidden_size = input_size + latent_hidden_sizes[-1]
         else:
-            self.last_hidden_size = input_size + latent_variable_num
+            self.last_hidden_size = input_size + latent_input_dim
 
         if self.batch_norm_before_output_activation:
             self.last_batch_norm = BatchNorm1d(output_size)
@@ -210,13 +210,9 @@ class ConditionalMlp(PyTorchModule):
                 h_input = self.input_batch_norms[i](h_input)
             h_input = self.hidden_activation(h_input)
 
-        if len(latent_variable.shape) > 1:
-            latent_variable = latent_variable.squeeze()
-        assert len(latent_variable.shape) == 1
+        assert len(latent_variable.shape) == 2
 
-        h_latent = F.one_hot(
-            latent_variable.long(), num_classes=self.latent_variable_num
-        ).float()
+        h_latent = latent_variable
         for i, fc in enumerate(self.latent_encoder_fcs):
             h_latent = fc(h_latent)
             if self.layer_norm:
@@ -254,13 +250,9 @@ class ConditionalMlp(PyTorchModule):
             h_input = fc(h_input)
             h_input = self.hidden_activation(h_input)
 
-        if len(latent_variable.shape) > 1:
-            latent_variable = latent_variable.squeeze()
-        assert len(latent_variable.shape) == 1
+        assert len(latent_variable.shape) == 2
 
-        h_latent = F.one_hot(
-            latent_variable.long(), num_classes=self.latent_variable_num
-        ).float()
+        h_latent = latent_variable
         for i, fc in enumerate(self.latent_encoder_fcs):
             h_latent = fc(h_latent)
             h_latent = self.hidden_activation(h_latent)
