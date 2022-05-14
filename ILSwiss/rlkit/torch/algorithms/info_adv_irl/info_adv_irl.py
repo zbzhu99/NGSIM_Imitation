@@ -40,25 +40,10 @@ class InfoAdvIRL(AdvIRL):
         policy_trainer_n,
         posterior_trainer_n,
         expert_replay_buffer,
-        state_only=False,
-        disc_optim_batch_size=1024,
-        policy_optim_batch_size=1024,
         posterior_optim_batch_size=1024,
-        policy_optim_batch_size_from_expert=0,
-        num_update_loops_per_train_call=1,
-        num_disc_updates_per_loop_iter=100,
-        num_policy_updates_per_loop_iter=100,
         num_post_updates_per_loop_iter=100,
-        disc_lr=1e-3,
-        disc_focal_loss_gamma=0.0,
-        disc_momentum=0.9,
-        disc_optimizer_class=optim.Adam,
         post_r_coef=0.1,
         latent_distribution=None,
-        use_grad_pen=True,
-        grad_pen_weight=10,
-        rew_clip_min=None,
-        rew_clip_max=None,
         **kwargs,
     ):
         super().__init__(
@@ -66,25 +51,10 @@ class InfoAdvIRL(AdvIRL):
             discriminator_n,
             policy_trainer_n,
             expert_replay_buffer,
-            state_only=state_only,
-            disc_optim_batch_size=disc_optim_batch_size,
-            policy_optim_batch_size=policy_optim_batch_size,
-            policy_optim_batch_size_from_expert=policy_optim_batch_size_from_expert,
-            num_update_loops_per_train_call=num_update_loops_per_train_call,
-            num_disc_updates_per_loop_iter=num_disc_updates_per_loop_iter,
-            num_policy_updates_per_loop_iter=num_policy_updates_per_loop_iter,
-            disc_lr=disc_lr,
-            disc_focal_loss_gamma=disc_focal_loss_gamma,
-            disc_momentum=disc_momentum,
-            disc_optimizer_class=disc_optimizer_class,
-            use_grad_pen=use_grad_pen,
-            grad_pen_weight=grad_pen_weight,
-            rew_clip_min=rew_clip_min,
-            rew_clip_max=rew_clip_max,
             **kwargs,
         )
 
-        self.eval_sampler._init_latent_distribution(latent_distribution)
+        self.eval_sampler.init_latent_distribution(latent_distribution)
         self.post_r_coef = post_r_coef
         self.posterior_trainer_n = posterior_trainer_n
         self.posterior_optim_batch_size = posterior_optim_batch_size
@@ -246,13 +216,6 @@ class InfoAdvIRL(AdvIRL):
         batch = self.get_batch(self.posterior_optim_batch_size, agent_id, False)
         # print(f"batch.keys: {batch.keys()}")
         self.posterior_trainer_n[policy_id].train_step(batch)
-
-    @property
-    def networks_n(self):
-        return {
-            p_id: [self.discriminator_n[p_id]] + self.policy_trainer_n[p_id].networks
-            for p_id in self.policy_ids
-        }
 
     def get_epoch_snapshot(self, epoch):
         # snapshot = super().get_epoch_snapshot(epoch)
@@ -567,8 +530,6 @@ class InfoAdvIRL(AdvIRL):
                 self.eval_statistics.update({f"{p_id} {name}": data})
 
         # AdvIRL evaluate
-        if self.eval_statistics is None:
-            self.eval_statistics = OrderedDict()
         self.eval_statistics.update(self.disc_eval_statistics)
         for p_id in self.policy_ids:
             _statistics = self.policy_trainer_n[p_id].get_eval_statistics()

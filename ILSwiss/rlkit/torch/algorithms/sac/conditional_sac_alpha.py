@@ -2,14 +2,13 @@ from collections import OrderedDict
 
 import numpy as np
 import torch
-import torch.optim as optim
 
 import rlkit.torch.utils.pytorch_util as ptu
-from rlkit.core.trainer import Trainer
+from rlkit.torch.algorithms.sac.sac_alpha import SoftActorCritic
 from rlkit.core.eval_util import create_stats_ordered_dict
 
 
-class ConditionalSoftActorCritic(Trainer):
+class ConditionalSoftActorCritic(SoftActorCritic):
     """
     version that:
         - uses reparameterization trick
@@ -23,56 +22,14 @@ class ConditionalSoftActorCritic(Trainer):
         qf1,
         qf2,
         vf,
-        reward_scale=1.0,
-        discount=0.99,
-        policy_lr=1e-3,
-        qf_lr=1e-3,
-        alpha_lr=3e-4,
-        soft_target_tau=1e-2,
-        alpha=0.2,
-        train_alpha=False,
-        policy_mean_reg_weight=1e-3,
-        policy_std_reg_weight=1e-3,
-        optimizer_class=optim.Adam,
-        beta_1=0.9,
-        ignore_terminal=False,
         **kwargs,
     ):
-        self.policy = policy
-        self.qf1 = qf1
-        self.qf2 = qf2
-        self.vf = vf
-        self.reward_scale = reward_scale
-        self.discount = discount
-        self.soft_target_tau = soft_target_tau
-        self.policy_mean_reg_weight = policy_mean_reg_weight
-        self.policy_std_reg_weight = policy_std_reg_weight
-        self.ignore_terminal = ignore_terminal
-
-        self.train_alpha = train_alpha
-        self.log_alpha = torch.tensor(np.log(alpha), requires_grad=train_alpha)
-        self.alpha = self.log_alpha.detach().exp()
-        assert (
-            "action_space" in kwargs.keys()
-        ), "action spcae should be taken into SAC alpha"
-        self.target_entropy = -np.prod(kwargs["action_space"].shape)
-
-        self.target_qf1 = qf1.copy()
-        self.target_qf2 = qf2.copy()
-
-        self.eval_statistics = None
-
-        self.policy_optimizer = optimizer_class(
-            self.policy.parameters(), lr=policy_lr, betas=(beta_1, 0.999)
-        )
-        self.qf1_optimizer = optimizer_class(
-            self.qf1.parameters(), lr=qf_lr, betas=(beta_1, 0.999)
-        )
-        self.qf2_optimizer = optimizer_class(
-            self.qf2.parameters(), lr=qf_lr, betas=(beta_1, 0.999)
-        )
-        self.alpha_optimizer = optimizer_class(
-            [self.log_alpha], lr=alpha_lr, betas=(beta_1, 0.999)
+        super().__init__(
+            policy,
+            qf1,
+            qf2,
+            vf,
+            **kwargs,
         )
 
     def train_step(self, batch):
@@ -81,10 +38,7 @@ class ConditionalSoftActorCritic(Trainer):
         # policy_params = itertools.chain(self.policy.parameters())
 
         rewards = self.reward_scale * batch["rewards"]
-        if self.ignore_terminal:
-            terminals = 0.0
-        else:
-            terminals = batch["terminals"]
+        terminals = batch["terminals"]
         obs = batch["observations"]
         latents = batch["latents"]
         actions = batch["actions"]
@@ -224,33 +178,3 @@ class ConditionalSoftActorCritic(Trainer):
                     ptu.get_numpy(policy_log_std),
                 )
             )
-
-    @property
-    def networks(self):
-        return [
-            self.policy,
-            self.qf1,
-            self.qf2,
-            self.target_qf1,
-            self.target_qf2,
-        ]
-
-    def _update_target_network(self):
-        ptu.soft_update_from_to(self.qf1, self.target_qf1, self.soft_target_tau)
-        ptu.soft_update_from_to(self.qf2, self.target_qf2, self.soft_target_tau)
-
-    def get_snapshot(self):
-        return dict(
-            qf1=self.qf1,
-            qf2=self.qf2,
-            policy=self.policy,
-            target_qf1=self.target_qf1,
-            target_qf2=self.target_qf2,
-            log_alpha=self.log_alpha,
-        )
-
-    def get_eval_statistics(self):
-        return self.eval_statistics
-
-    def end_epoch(self):
-        self.eval_statistics = None

@@ -15,7 +15,7 @@ constants:
   traj_num: -1
   scale_env_with_demo_stats: true
 
-  log_path: "/home/liuyuecheng/i80_fixbug_result/buf2M_dis64x2_policy_512x3_r2_alpha1"
+  log_path: "logs/<path_to_log_files>/"
 
   eval_deterministic: true
 

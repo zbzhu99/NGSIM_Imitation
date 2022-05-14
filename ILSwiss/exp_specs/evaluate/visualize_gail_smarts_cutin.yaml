@@ -15,7 +15,7 @@ constants:
   traj_num: -1
   scale_env_with_demo_stats: true
 
-  log_path: "logs/gail2/focal2/"
+  log_path: "logs/<path_to_log_files>/"
 
   eval_deterministic: true
 

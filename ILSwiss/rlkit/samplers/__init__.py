@@ -376,7 +376,7 @@ class ConditionalPathSampler(PathSampler):
             render_kwargs=render_kwargs,
         )
 
-    def _init_latent_distribution(self, latent_distribution):
+    def init_latent_distribution(self, latent_distribution):
         self.latent_distribution = latent_distribution
         self.latents_n = np.array(
             [

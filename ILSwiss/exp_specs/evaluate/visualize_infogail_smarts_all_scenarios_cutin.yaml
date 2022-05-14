@@ -15,7 +15,7 @@ constants:
   traj_num: -1
   scale_env_with_demo_stats: true
 
-  log_path: "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/0505/ILSwiss/logs/gail2/gail_smarts_all_scenarios_cutin--scale--terminal--gp-4.0--rs-4.0--trajnum--1--stack-1_2022_05_11_10_37_15_0000--s-0/"
+  log_path: "logs/<path_to_log_files>/"
 
   eval_deterministic: true
 

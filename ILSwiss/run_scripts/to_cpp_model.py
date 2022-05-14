@@ -13,9 +13,9 @@ sys.path.insert(0, parentdir)
 print(sys.path)
 
 configs = {
-    "policy_input_path": "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/0505/ILSwiss/logs/gail-smarts-all-scenarios-cutin--scale--terminal--gp-4.0--rs-4.0--trajnum--1--stack-1/gail_smarts_all_scenarios_cutin--scale--terminal--gp-4.0--rs-4.0--trajnum--1--stack-1_2022_05_11_10_51_35_0000--s-0/params.pkl",
+    "policy_input_path": "<saved_model_path>",
     "polity_output_path": "./cpp_model/cpp_model.ckpt",
-    "stats_input_path": "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/0505/ILSwiss/demos/ngsim_i80_ngsim_us101/smarts_radius_stack-1_cutin.pkl",
+    "stats_input_path": "<saved_stats_file_path>>",
     "stats_output_path": "./cpp_model/stats.json",
 }
 
