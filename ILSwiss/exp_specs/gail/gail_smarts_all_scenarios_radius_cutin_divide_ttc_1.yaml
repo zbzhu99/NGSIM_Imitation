@@ -1,6 +1,6 @@
 meta_data:
-  script_path: run_scripts/info_adv_irl_exp_script.py
-  exp_name: infogail_smarts_all_scenarios_cutin
+  script_path: run_scripts/adv_irl_exp_script.py
+  exp_name: gail_smarts_all_scenarios_cutin_ttc_divide
   description: Train an adversarial IRL model
   num_workers: 12 # 64
   using_gpus: true
@@ -14,7 +14,7 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_all_scenarios_radius_stack_1_cutin'
+  expert_name: 'smarts_all_scenarios_radius_stack_1_cutin_ttc_divide_1'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
@@ -25,23 +25,12 @@ constants:
   disc_use_bn: false
   disc_clamp_magnitude: 10.0
 
-  policy_obs_hidden_size: 512
-  policy_obs_num_hidden_layers: 3
-  policy_latent_hidden_size: 32
-  policy_latent_num_hidden_layers: 2
-
-  categorical_latent_num: 1
-  categorical_class_num: 2
-  continous_latent_num: 4
-
-  posterior_hidden_size: 128
-  posterior_num_hidden_layers: 2
-  posterior_hid_act: tanh
+  policy_net_size: 512
+  policy_num_hidden_layers: 3
 
   adv_irl_params:
-    mode: 'gail'
+    mode: 'gail3'
     state_only: false
-
 
     best_key: "Test agent_0 Collision Rate all"
     best_criterion: "smallest"
@@ -62,17 +51,14 @@ constants:
     num_update_loops_per_train_call: 100
     num_disc_updates_per_loop_iter: 1
     num_policy_updates_per_loop_iter: 1
-    num_post_updates_per_loop_iter: 2
 
     disc_lr: 0.0003
-    disc_focal_loss_gamma: 0.0
+    disc_focal_loss_gamma: 2.0
     disc_momentum: 0.9
     use_grad_pen: true
     disc_optim_batch_size: 256
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
-    posterior_optim_batch_size: 256
-    post_r_coef: 0.0
 
     save_best: true
     save_epoch: false
@@ -82,7 +68,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 0.25
+    alpha: 1.0
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25
@@ -92,11 +78,6 @@ constants:
     policy_mean_reg_weight: 0.001
     policy_std_reg_weight: 0.001
     ignore_terminal: false
-
-  posterior_params:
-    post_lr: 0.0003
-    post_momentum: 0.9
-    soft_target_tau: 0.2
 
   env_specs:
     env_creator: "smarts"
