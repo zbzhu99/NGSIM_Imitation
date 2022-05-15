@@ -58,11 +58,9 @@ class PathSampler:
             for env_id in range(self.env_num)
         ]
 
-    def obtain_samples(self, num_steps=None, pred_obs=False):
+    def obtain_samples(self, pred_obs=False):
         paths = []
         total_steps = 0
-        if num_steps is None:
-            num_steps = self.num_steps
 
         finished_env_ids = []
         env_finished_car_num = np.zeros(self.env_num)
@@ -221,11 +219,9 @@ class MultiagentPathSampler:
             for env_id in range(self.env_num)
         ]
 
-    def obtain_samples(self, num_steps=None, pred_obs=False):
+    def obtain_samples(self, pred_obs=False):
         paths = []
         total_steps = 0
-        if num_steps is None:
-            num_steps = self.num_steps
 
         finished_env_ids = []
         env_finished_car_num = np.zeros(self.env_num)
@@ -422,11 +418,9 @@ class ConditionalPathSampler(PathSampler):
                 actions_n[idx][agent_id] = actions[i]
         return actions_n
 
-    def obtain_samples(self, num_steps=None, pred_obs=False):
+    def obtain_samples(self, pred_obs=False):
         paths = []
         total_steps = 0
-        if num_steps is None:
-            num_steps = self.num_steps
 
         finished_env_ids = []
         env_finished_car_num = np.zeros(self.env_num)
