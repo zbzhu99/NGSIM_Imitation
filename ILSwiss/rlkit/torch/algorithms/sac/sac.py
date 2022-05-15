@@ -124,7 +124,7 @@ class SoftActorCritic(Trainer):
         q1_new_acts = self.qf1(obs, new_actions)
         q2_new_acts = self.qf2(obs, new_actions)  # error
         q_new_actions = torch.min(q1_new_acts, q2_new_acts)
-        v_target = q_new_actions - self.alpha * self.reward_scale * log_pi
+        v_target = q_new_actions - self.alpha * log_pi
         v_target = v_target.detach()
         vf_loss = 0.5 * torch.mean((v_pred - v_target) ** 2)
 
@@ -153,7 +153,7 @@ class SoftActorCritic(Trainer):
 
         self.policy_optimizer.zero_grad()
         policy_loss = torch.mean(
-            self.alpha * self.reward_scale * log_pi - q_new_actions
+            self.alpha * log_pi - q_new_actions
         )
         mean_reg_loss = self.policy_mean_reg_weight * (policy_mean**2).mean()
         std_reg_loss = self.policy_std_reg_weight * (policy_log_std**2).mean()
