@@ -31,10 +31,12 @@ def experiment(variant):
     train_split_path = listings[variant["expert_name"]]["train_split"][0]
     with open(train_split_path, "rb") as f:
         # train_vehicle_ids is a OrderedDcit
-        train_vehicle_ids = pickle.load(f)
+        train_vehicles = pickle.load(f)
 
     env_specs = variant["env_specs"]
-    env = get_env(env_specs, traffic_name=list(train_vehicle_ids.keys())[0])
+    s_name = list(train_vehicles.keys())[0]
+    t_name = list(train_vehicles[s_name].keys())[0]
+    env = get_env(env_specs, scenario_name=s_name, traffic_name=t_name)
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}".format(env_specs["env_name"]))

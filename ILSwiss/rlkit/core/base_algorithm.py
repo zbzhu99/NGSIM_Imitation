@@ -47,7 +47,8 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         save_best=False,
         save_epoch=False,
         save_best_starting_from_epoch=0,
-        best_key="Test agent_0 Success Rate",  # higher is better
+        best_key="Test agent_0 all Success Rate",  # higher is better
+        best_criterion="largest",
         no_terminal=False,
         eval_no_terminal=False,
         render=False,
@@ -87,7 +88,16 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         self.save_epoch = save_epoch
         self.save_best_starting_from_epoch = save_best_starting_from_epoch
         self.best_key = best_key
-        self.best_statistic_so_far = float("-Inf")
+        assert best_criterion in ["largest", "smallest"]
+        self.best_criterion = best_criterion
+
+        if self.best_criterion == "largest":
+            self.best_statistic_so_far = float("-inf")
+        elif self.best_criterion == "smallest":
+            self.best_statistic_so_far = float("inf")
+        else:
+            raise NotImplementedError
+        print(f"best_key: {best_key}, best_criterion: {best_criterion}")
 
         if eval_sampler is None:
             if eval_policy_n is None:
@@ -140,7 +150,12 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         self._algo_start_time = None
         self._old_table_keys = None
         self._current_path_builder = [
-            PathBuilder(self.agent_ids) for _ in range(self.training_env_num)
+            PathBuilder(
+                self.agent_ids,
+                self.training_env.sub_envs_info[env_id].scenario_name,
+                self.training_env.sub_envs_info[env_id].traffic_name,
+            )
+            for env_id in range(self.training_env_num)
         ]
         self._exploration_paths = []
 
@@ -173,7 +188,12 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         self._start_new_rollout()
 
         self._current_path_builder = [
-            PathBuilder(self.agent_ids) for _ in range(self.training_env_num)
+            PathBuilder(
+                self.agent_ids,
+                self.training_env.sub_envs_info[env_id].scenario_name,
+                self.training_env.sub_envs_info[env_id].traffic_name,
+            )
+            for env_id in range(self.training_env_num)
         ]
 
         for epoch in gt.timed_for(
@@ -510,7 +530,11 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
             self._n_rollouts_total += 1
             if len(self._current_path_builder[idx]) > 0:
                 self._exploration_paths.append(self._current_path_builder[idx])
-                self._current_path_builder[idx] = PathBuilder(self.agent_ids)
+                self._current_path_builder[idx] = PathBuilder(
+                    self.agent_ids,
+                    self.training_env.sub_envs_info[idx].scenario_name,
+                    self.training_env.sub_envs_info[idx].traffic_name,
+                )
 
     def get_epoch_snapshot(self, epoch):
         """
@@ -607,10 +631,22 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
         if self.save_epoch:
             logger.save_extra_data(data_to_save, "epoch{}.pkl".format(epoch))
             print("\n\nSAVED MODEL AT EPOCH {}\n\n".format(epoch))
-        if best_statistic > self.best_statistic_so_far:
-            self.best_statistic_so_far = best_statistic
-            if self.save_best and epoch >= self.save_best_starting_from_epoch:
-                data_to_save = {"epoch": epoch, "statistics": statistics}
-                data_to_save.update(self.get_epoch_snapshot(epoch))
-                logger.save_extra_data(data_to_save, "best.pkl")
-                print("\n\nSAVED BEST\n\n")
+
+        if self.best_criterion == "largest":
+            if best_statistic > self.best_statistic_so_far:
+                self.best_statistic_so_far = best_statistic
+                if self.save_best and epoch >= self.save_best_starting_from_epoch:
+                    data_to_save = {"epoch": epoch, "statistics": statistics}
+                    data_to_save.update(self.get_epoch_snapshot(epoch))
+                    logger.save_extra_data(data_to_save, "best.pkl")
+                    print("\n\nSAVED BEST\n\n")
+        elif self.best_criterion == "smallest":
+            if best_statistic < self.best_statistic_so_far:
+                self.best_statistic_so_far = best_statistic
+                if self.save_best and epoch >= self.save_best_starting_from_epoch:
+                    data_to_save = {"epoch": epoch, "statistics": statistics}
+                    data_to_save.update(self.get_epoch_snapshot(epoch))
+                    logger.save_extra_data(data_to_save, "best.pkl")
+                    print("\n\nSAVED BEST\n\n")
+        else:
+            raise NotImplementedError

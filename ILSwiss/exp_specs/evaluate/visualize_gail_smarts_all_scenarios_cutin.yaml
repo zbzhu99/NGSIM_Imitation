@@ -1,0 +1,37 @@
+meta_data:
+  script_path: run_scripts/visualize_smarts.py
+  exp_name: vis_policy_smarts
+  description: Save policy rollout videos in SMARTS simulator
+  num_workers: 1 # 64
+  using_gpus: true
+# -----------------------------------------------------------------------------
+variables:
+  seed: [0]
+
+# -----------------------------------------------------------------------------
+constants:
+  expert_name: 'smarts_all_scenarios_radius_stack_1_cutin'
+  expert_idx: 0
+  traj_num: -1
+  scale_env_with_demo_stats: true
+
+  log_path: "logs/<path_to_log_files>/"
+
+  eval_deterministic: true
+
+  max_path_length: 1000
+
+  env_specs:
+    env_creator: "smarts"
+    scenario_names:
+      - "ngsim_i80"
+      - "ngsim_us101"
+    env_kwargs:
+      feature_type: "radius"
+      closest_neighbor_num: 8
+      control_all_vehicles: False
+      collision_done: false
+      control_vehicle_num: 1
+      envision: True
+      envision_sim_name: "gail_i80"
+      envision_record_data_replay_path: "./envision_output"

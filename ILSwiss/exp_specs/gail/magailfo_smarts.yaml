@@ -32,6 +32,9 @@ constants:
     mode: 'gail'
     state_only: true
 
+    best_key: "Test agent_0 Collision Rate all"
+    best_criterion: "smallest"
+
     num_epochs: 162
     num_steps_per_epoch: 100000
     num_steps_between_train_calls: 1000
@@ -50,6 +53,7 @@ constants:
     num_policy_updates_per_loop_iter: 1
 
     disc_lr: 0.0003
+    disc_focal_loss_gamma: 0.0
     disc_momentum: 0.9
     use_grad_pen: true
     # grad_pen_weight: 10.0
@@ -78,8 +82,10 @@ constants:
 
   env_specs:
     env_creator: 'masmarts'
-    scenario_name: 'ngsim'
-    env_kwargs: {}
+    scenario_names:
+      - 'ngsim_i80'
+    env_kwargs:
+      collision_done: true
     training_env_specs:
       env_num: 20
       wait_num: 10

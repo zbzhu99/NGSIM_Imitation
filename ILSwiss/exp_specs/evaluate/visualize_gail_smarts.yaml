@@ -10,12 +10,12 @@ variables:
 
 # -----------------------------------------------------------------------------
 constants:
-  expert_name: 'smarts_i80'
+  expert_name: 'smarts_i80_radius_stack_1'
   expert_idx: 0
   traj_num: -1
   scale_env_with_demo_stats: true
 
-  log_path: "logs/gail-smarts-ngsim--scale--terminal--gp-4.0--rs-2.0--trajnum--1/gail_smarts_ngsim--scale--terminal--gp-4.0--rs-2.0--trajnum--1_2022_03_18_09_27_17_0000--s-0"
+  log_path: "logs/<path_to_log_files>/"
 
   eval_deterministic: true
 
@@ -23,10 +23,14 @@ constants:
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "NGSIM-I80"
+    scenario_names:
+      - "ngsim_i80"
     env_kwargs:
+      feature_type: "radius"
+      closest_neighbor_num: 8
       control_all_vehicles: False
-      control_vehicle_num: 10
+      control_vehicle_num: 1
+      collision_done: true
       envision: True
       envision_sim_name: "gail_i80"
       envision_record_data_replay_path: "./envision_output"

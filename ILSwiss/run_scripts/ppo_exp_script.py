@@ -22,7 +22,7 @@ from rlkit.torch.common.networks import FlattenMlp
 from rlkit.torch.common.policies import ReparamMultivariateGaussianPolicy
 from rlkit.torch.algorithms.ppo.ppo import PPO
 from rlkit.torch.algorithms.torch_rl_algorithm import TorchRLAlgorithm
-from smarts_imitation.utils.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicles
 
 
 def experiment(variant):
@@ -32,15 +32,17 @@ def experiment(variant):
     train_split_path = listings[variant["expert_name"]]["train_split"][0]
     with open(train_split_path, "rb") as f:
         # train_vehicle_ids is a OrderedDcit
-        train_vehicle_ids = pickle.load(f)
+        train_vehicles = pickle.load(f)
 
     eval_split_path = listings[variant["expert_name"]]["eval_split"][0]
     with open(eval_split_path, "rb") as f:
         # eval_vehicle_ids is a OrderedDict
-        eval_vehicle_ids = pickle.load(f)
+        eval_vehicles = pickle.load(f)
 
     env_specs = variant["env_specs"]
-    env = get_env(env_specs, traffic_name=list(eval_vehicle_ids.keys())[0])
+    s_name = list(eval_vehicles.keys())[0]
+    t_name = list(eval_vehicles[s_name].keys())[0]
+    env = get_env(env_specs, scenario_name=s_name, traffic_name=t_name)
     env.seed(env_specs["eval_env_seed"])
 
     print("\n\nEnv: {}:{}".format(env_specs["env_creator"], env_specs["env_name"]))
@@ -107,12 +109,14 @@ def experiment(variant):
 
     env = env_wrapper(env)
 
-    train_splitted_vehicle_ids, train_real_env_num = split_vehicle_ids(
-        train_vehicle_ids, env_specs["training_env_specs"]["env_num"]
+    train_splitted_vehicles, train_real_env_num = split_vehicles(
+        train_vehicles, env_specs["training_env_specs"]["env_num"]
     )
     train_env_nums = {
-        traffic_name: len(ids_list)
-        for traffic_name, ids_list in train_splitted_vehicle_ids.items()
+        scenario_name: {
+            traffic_name: len(vehicles) for traffic_name, vehicles in traffics.items()
+        }
+        for scenario_name, traffics in train_splitted_vehicles.items()
     }
     print("training env nums: {}".format(train_env_nums))
     env_specs["training_env_specs"]["env_num"] = train_real_env_num
@@ -122,18 +126,20 @@ def experiment(variant):
     training_env = get_envs(
         env_specs,
         env_wrapper,
-        splitted_vehicle_ids=train_splitted_vehicle_ids,
+        splitted_vehicles=train_splitted_vehicles,
         **env_specs["training_env_specs"],
         norm_obs=True,
     )
     training_env.seed(env_specs["training_env_seed"])
 
-    eval_splitted_vehicle_ids, eval_real_env_num = split_vehicle_ids(
-        eval_vehicle_ids, env_specs["eval_env_specs"]["env_num"]
+    eval_splitted_vehicles, eval_real_env_num = split_vehicles(
+        eval_vehicles, env_specs["eval_env_specs"]["env_num"]
     )
     eval_env_nums = {
-        traffic_name: len(ids_list)
-        for traffic_name, ids_list in eval_splitted_vehicle_ids.items()
+        scenario_name: {
+            traffic_name: len(vehicles) for traffic_name, vehicles in traffics.items()
+        }
+        for scenario_name, traffics in eval_splitted_vehicles.items()
     }
     print("eval env nums: {}".format(eval_env_nums))
     env_specs["eval_env_specs"]["env_num"] = eval_real_env_num
@@ -143,7 +149,7 @@ def experiment(variant):
     eval_env = get_envs(
         env_specs,
         env_wrapper,
-        splitted_vehicle_ids=eval_splitted_vehicle_ids,
+        splitted_vehicles=eval_splitted_vehicles,
         norm_obs=True,
         update_obs_rms=False,
     )

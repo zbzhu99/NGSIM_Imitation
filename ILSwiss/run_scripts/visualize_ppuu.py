@@ -28,64 +28,71 @@ def experiment(variant):
 
     eval_split_path = listings[variant["expert_name"]]["train_split"][0]
     with open(eval_split_path, "rb") as f:
-        eval_vehicle_ids = pickle.load(f)
+        eval_vehicles = pickle.load(f)
 
-    eval_vehicle_ids = np.array(eval_vehicle_ids)
     # Can specify vehicle ids to be visualized as follows.
     # eval_vehicle_ids = np.array([[0, 788],])
-    variant["num_vehicles"] = len(eval_vehicle_ids)
-    print("Total Vehicle Num: ", len(eval_vehicle_ids))
+    for scenario_name, traffics in eval_vehicles.items():
+        for traffic_name, traffic_vehicles in traffics:
+            variant["num_vehicles"] = len(traffic_vehicles)
+            print("Total Vehicle Num: ", len(traffic_vehicles))
 
-    env_specs = variant["env_specs"]
-    env = get_env(env_specs, vehicle_ids=eval_vehicle_ids)
-    env.seed(variant["seed"])
+            env_specs = variant["env_specs"]
+            env = get_env(
+                env_specs,
+                scenario_name=scenario_name,
+                traffic_name=traffic_name,
+                vehicles=traffic_vehicles,
+            )
+            env.seed(variant["seed"])
 
-    print("\nEnv: {}: {}".format(env_specs["env_creator"], env_specs["scenario_name"]))
-    print("kwargs: {}".format(env_specs["env_kwargs"]))
-    print("Obs Space: {}".format(env.observation_space_n))
-    print("Act Space: {}\n".format(env.action_space_n))
+            print("kwargs: {}".format(env_specs["env_kwargs"]))
+            print("Obs Space: {}".format(env.observation_space_n))
+            print("Act Space: {}\n".format(env.action_space_n))
 
-    if variant["scale_env_with_demo_stats"]:
-        # The normalization is implemented inside the PPUU simulator.
-        raise NotImplementedError
+            if variant["scale_env_with_demo_stats"]:
+                # The normalization is implemented inside the PPUU simulator.
+                raise NotImplementedError
 
-    agent_id = "agent_0"
-    policy = joblib.load(variant["policy_checkpoint"])["policy_0"]["policy"]
+            agent_id = "agent_0"
+            policy = joblib.load(variant["policy_checkpoint"])["policy_0"]["policy"]
 
-    if variant["eval_deterministic"]:
-        policy = MakeDeterministic(policy)
-    policy.to(ptu.device)
+            if variant["eval_deterministic"]:
+                policy = MakeDeterministic(policy)
+            policy.to(ptu.device)
 
-    fps = variant["fps"]
-    video_path = variant["video_path"]
-    for _ in range(variant["num_vehicles"]):
-        images = []
-        observation_n = env.reset()
+            fps = variant["fps"]
+            video_path = variant["video_path"]
+            for _ in range(variant["num_vehicles"]):
+                images = []
+                observation_n = env.reset()
 
-        image, _ = env.get_render_image()
-        observation = observation_n[agent_id]
-        car_id = None
+                image, _ = env.get_render_image()
+                observation = observation_n[agent_id]
+                car_id = None
 
-        for step in range(variant["max_path_length"]):
-            action, agent_info = policy.get_action(obs_np=observation)
+                for step in range(variant["max_path_length"]):
+                    action, agent_info = policy.get_action(obs_np=observation)
 
-            action_n = {agent_id: action}
-            next_observation_n, reward_n, terminal_n, env_info_n = env.step(action_n)
-            if car_id is None:
-                car_id = env_info_n[agent_id]["car_id"]
+                    action_n = {agent_id: action}
+                    next_observation_n, reward_n, terminal_n, env_info_n = env.step(
+                        action_n
+                    )
+                    if car_id is None:
+                        car_id = env_info_n[agent_id]["car_id"]
 
-            image, _ = env.get_render_image()
-            images.append(image)
+                    image, _ = env.get_render_image()
+                    images.append(image)
 
-            if terminal_n[agent_id]:
-                print(f"car {car_id} terminated @ {step}")
-                break
-            observation = next_observation_n[agent_id]
+                    if terminal_n[agent_id]:
+                        print(f"car {car_id} terminated @ {step}")
+                        break
+                    observation = next_observation_n[agent_id]
 
-        print(f"saving videos of car {car_id}...")
-        images = np.stack(images, axis=0)
-        video_save_path = os.path.join(video_path, f"car_{car_id}.mp4")
-        save_video(images, video_save_path, fps=fps)
+                print(f"saving videos of car {car_id}...")
+                images = np.stack(images, axis=0)
+                video_save_path = os.path.join(video_path, f"car_{car_id}.mp4")
+                save_video(images, video_save_path, fps=fps)
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ from rlkit.core import eval_util
 from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv
 from rlkit.samplers import PathSampler
 from rlkit.torch.common.policies import MakeDeterministic
-from smarts_imitation.utils.env_split import split_vehicle_ids
+from smarts_imitation.utils.env_split import split_vehicles
 
 
 def experiment(variant):
@@ -32,10 +32,12 @@ def experiment(variant):
     eval_split_path = listings[variant["expert_name"]]["eval_split"][0]
     with open(eval_split_path, "rb") as f:
         # eval_vehicle_ids is a OrderedDict
-        eval_vehicle_ids = pickle.load(f)
+        eval_vehicles = pickle.load(f)
 
     """ 1. Create Template Env and Eval Vector Envs """
-    env = get_env(env_specs, traffic_name=list(eval_vehicle_ids.keys())[0])
+    s_name = list(eval_vehicles.keys())[0]
+    t_name = list(eval_vehicles[s_name]).keys()[0]
+    env = get_env(env_specs, scenario_name=s_name, traffic_name=t_name)
     env.seed(env_specs["eval_env_seed"])
 
     print("\nEnv: {}".format(env_specs["env_creator"]))
@@ -79,12 +81,14 @@ def experiment(variant):
 
     env = env_wrapper(env)
 
-    eval_splitted_vehicle_ids, eval_real_env_num = split_vehicle_ids(
-        eval_vehicle_ids, env_specs["eval_env_specs"]["env_num"]
+    eval_splitted_vehicles, eval_real_env_num = split_vehicles(
+        eval_vehicles, env_specs["eval_env_specs"]["env_num"]
     )
     eval_env_nums = {
-        traffic_name: len(ids_list)
-        for traffic_name, ids_list in eval_splitted_vehicle_ids.items()
+        scenario_name: {
+            traffic_name: len(vehicles) for traffic_name, vehicles in traffics.items()
+        }
+        for scenario_name, traffics in eval_splitted_vehicles.items()
     }
     print("eval env nums: {}".format(eval_env_nums))
     env_specs["eval_env_specs"]["env_num"] = eval_real_env_num
@@ -99,15 +103,20 @@ def experiment(variant):
     eval_env = get_envs(
         env_specs,
         env_wrapper,
-        splitted_vehicle_ids=eval_splitted_vehicle_ids,
+        splitted_vehicles=eval_splitted_vehicles,
         **env_specs["eval_env_specs"],
     )
     eval_car_num = []
-    for vehicle_ids_lists in eval_splitted_vehicle_ids.values():
+    for traffics in eval_splitted_vehicles.values():
         # should be ordered.
-        eval_car_num.extend(
-            [len(x) - env.control_vehicle_num + 1 for x in vehicle_ids_lists]
-        )
+        for vehicles_lists in traffics.values():
+            eval_car_num.extend(
+                [len(x) - env.control_vehicle_num + 1 for x in vehicles_lists]
+            )
+    eval_car_num = [
+        eval_env.sub_envs_info[env_id].vehicle_num - env.control_vehicle_num + 1
+        for env_id in range(eval_real_env_num)
+    ]
 
     """ 2. Load Checkpoint Policies """
     # all agents share the same policy

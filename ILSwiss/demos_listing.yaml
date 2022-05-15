@@ -1,49 +1,97 @@
-smarts_i80_radius_stack_4:
+smarts_all_scenarios_radius_stack_1:
   description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
   file_paths: [
-    ./demos/ngsim/smarts_NGSIM-I80_radius_stack-4.pkl
+    ./demos/ngsim_i80_ngsim_us101/smarts_radius_stack-1.pkl
   ]
   eval_split: [
-    ./demos/ngsim/test_ids.pkl
+    ./demos/ngsim_i80_ngsim_us101/test_vehicles.pkl
   ]
   train_split: [
-    ./demos/ngsim/train_ids.pkl
+    ./demos/ngsim_i80_ngsim_us101/train_vehicles.pkl
+  ]
+
+smarts_all_scenarios_radius_stack_1_cutin:
+  description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
+  file_paths: [
+    ./demos/ngsim_i80_ngsim_us101/smarts_radius_stack-1_cutin.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim_i80_ngsim_us101/test_vehicles_cutin.pkl
+  ]
+  train_split: [
+    ./demos/ngsim_i80_ngsim_us101/train_vehicles_cutin.pkl
+  ]
+
+smarts_all_scenarios_radius_stack_1_cutin_ttc_divide_1:
+  description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
+  file_paths: [
+    ./demos/ngsim_i80_ngsim_us101/smarts_radius_stack-1_cutin_ttc_divide_1.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim_i80_ngsim_us101/test_vehicles_cutin_ttc_divide_1.pkl
+  ]
+  train_split: [
+    ./demos/ngsim_i80_ngsim_us101/train_vehicles_cutin_ttc_divide_1.pkl
+  ]
+
+smarts_all_scenarios_radius_stack_1_cutin_ttc_divide_2:
+  description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
+  file_paths: [
+    ./demos/ngsim_i80_ngsim_us101/smarts_radius_stack-1_cutin_ttc_divide_2.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim_i80_ngsim_us101/test_vehicles_cutin_ttc_divide_2.pkl
+  ]
+  train_split: [
+    ./demos/ngsim_i80_ngsim_us101/train_vehicles_cutin_ttc_divide_2.pkl
   ]
 
 smarts_i80_radius_stack_1:
   description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
   file_paths: [
-    ./demos/ngsim/smarts_NGSIM-I80_radius_stack-1.pkl
+    ./demos/ngsim_i80/smarts_radius_stack-1.pkl
   ]
   eval_split: [
-    ./demos/ngsim/test_ids.pkl
+    ./demos/ngsim_i80/test_vehicles.pkl
   ]
   train_split: [
-    ./demos/ngsim/train_ids.pkl
+    ./demos/ngsim_i80/train_vehicles.pkl
   ]
 
 smarts_i80_radius_stack_1_cutin:
   description: "SMARTS, NGSIM, I80, RADIUS_EGO OBS"
   file_paths: [
-    ./demos/ngsim/smarts_NGSIM-I80_radius_stack-1_cutin.pkl
+    ./demos/ngsim_i80/smarts_radius_stack-1_cutin.pkl
   ]
   eval_split: [
-    ./demos/ngsim/cutin_test_ids.pkl
+    ./demos/ngsim_i80/test_vehicles_cutin.pkl
   ]
   train_split: [
-    ./demos/ngsim/cutin_train_ids.pkl
+    ./demos/ngsim_i80/train_vehicles_cutin.pkl
   ]
 
-smarts_i80_lane_stack_4:
-  description: "SMARTS, NGSIM, I80, LANE OBS"
+smarts_us101_radius_stack_1:
+  description: "SMARTS, NGSIM, US101, RADIUS_EGO OBS"
   file_paths: [
-    ./demos/ngsim/smarts_NGSIM-I80_lane_stack-4.pkl
+    ./demos/ngsim_us101/smarts_radius_stack-1.pkl
   ]
   eval_split: [
-    ./demos/ngsim/test_ids.pkl
+    ./demos/ngsim_us101/test_vehicles.pkl
   ]
   train_split: [
-    ./demos/ngsim/train_ids.pkl
+    ./demos/ngsim_us101/train_vehicles.pkl
+  ]
+
+smarts_us101_radius_stack_1_cutin:
+  description: "SMARTS, NGSIM, US101, RADIUS_EGO OBS"
+  file_paths: [
+    ./demos/ngsim_us101/smarts_radius_stack-1_cutin.pkl
+  ]
+  eval_split: [
+    ./demos/ngsim_us101/test_vehicles_cutin.pkl
+  ]
+  train_split: [
+    ./demos/ngsim_us101/train_vehicles_cutin.pkl
   ]
 
 ppuu_i80:

@@ -3,13 +3,14 @@ from collections import OrderedDict
 
 import torch
 import torch.optim as optim
-from torch import nn
 from torch import autograd
 import torch.nn.functional as F
 
 import rlkit.torch.utils.pytorch_util as ptu
 from rlkit.torch.core import np_to_pytorch_batch
 from rlkit.torch.algorithms.torch_base_algorithm import TorchBaseAlgorithm
+from rlkit.torch.common.loss import BCEFocalLoss
+from copy import deepcopy
 
 
 class AdvIRL(TorchBaseAlgorithm):
@@ -45,6 +46,7 @@ class AdvIRL(TorchBaseAlgorithm):
         num_disc_updates_per_loop_iter=100,
         num_policy_updates_per_loop_iter=100,
         disc_lr=1e-3,
+        disc_focal_loss_gamma=0.0,
         disc_momentum=0.0,
         disc_optimizer_class=optim.Adam,
         use_grad_pen=True,
@@ -58,6 +60,7 @@ class AdvIRL(TorchBaseAlgorithm):
             "gail",
             "fairl",
             "gail2",
+            "gail3",
         ], "Invalid adversarial irl algorithm!"
         super().__init__(**kwargs)
 
@@ -81,9 +84,10 @@ class AdvIRL(TorchBaseAlgorithm):
         }
 
         self.disc_optim_batch_size = disc_optim_batch_size
+        self.disc_focal_loss_gamma = disc_focal_loss_gamma
         print("\n\nDISC MOMENTUM: %f\n\n" % disc_momentum)
 
-        self.bce = nn.BCEWithLogitsLoss()
+        self.bcefocal = BCEFocalLoss(self.disc_focal_loss_gamma)
         self.bce_targets = torch.cat(
             [
                 torch.ones(disc_optim_batch_size, 1),
@@ -91,7 +95,7 @@ class AdvIRL(TorchBaseAlgorithm):
             ],
             dim=0,
         )
-        self.bce.to(ptu.device)
+        self.bcefocal.to(ptu.device)
         self.bce_targets.to(ptu.device)
 
         self.use_grad_pen = use_grad_pen
@@ -114,7 +118,7 @@ class AdvIRL(TorchBaseAlgorithm):
         else:
             buffer = self.replay_buffer
         batch = buffer.random_batch(batch_size, agent_id, keys=keys)
-        batch = np_to_pytorch_batch(batch)
+        batch = deepcopy(np_to_pytorch_batch(batch))
         return batch
 
     def _end_epoch(self):
@@ -124,7 +128,8 @@ class AdvIRL(TorchBaseAlgorithm):
         super()._end_epoch()
 
     def evaluate(self, epoch):
-        self.eval_statistics = OrderedDict()
+        if self.eval_statistics is None:
+            self.eval_statistics = OrderedDict()
         self.eval_statistics.update(self.disc_eval_statistics)
         for p_id in self.policy_ids:
             _statistics = self.policy_trainer_n[p_id].get_eval_statistics()
@@ -176,7 +181,7 @@ class AdvIRL(TorchBaseAlgorithm):
 
         disc_logits = self.discriminator_n[policy_id](disc_input)
         disc_preds = (disc_logits > 0).type(disc_logits.data.type())
-        disc_ce_loss = self.bce(disc_logits, self.bce_targets)
+        disc_ce_loss = self.bcefocal(disc_logits, self.bce_targets)
         accuracy = (disc_preds == self.bce_targets).type(torch.FloatTensor).mean()
 
         if self.use_grad_pen:
@@ -285,6 +290,9 @@ class AdvIRL(TorchBaseAlgorithm):
             policy_batch["rewards"] = F.softplus(
                 disc_logits, beta=-1
             )  # F.softplus(disc_logits, beta=-1)
+        elif self.mode == "gail3":  # log D < 0
+            origin_reward = F.softplus(disc_logits, beta=-1)
+            policy_batch["rewards"] = torch.clamp(origin_reward + 2.5, min=0, max=2.5)
         else:  # fairl
             policy_batch["rewards"] = torch.exp(disc_logits) * (-1.0 * disc_logits)
 
@@ -332,6 +340,6 @@ class AdvIRL(TorchBaseAlgorithm):
         return snapshot
 
     def to(self, device):
-        self.bce.to(ptu.device)
+        self.bcefocal.to(ptu.device)
         self.bce_targets = self.bce_targets.to(ptu.device)
         super().to(device)

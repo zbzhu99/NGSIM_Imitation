@@ -6,7 +6,7 @@ import queue
 import pickle
 import inspect
 from pathlib import Path
-from collections import deque, OrderedDict
+from collections import deque, defaultdict
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -28,52 +28,69 @@ from smarts.core.utils.math import radians_to_vec
 from smarts_imitation.utils.feature_group import FeatureGroup
 from smarts_imitation.utils import adapter, agent
 from smarts_imitation import ScenarioZoo
+from smarts_imitation.utils.vehicle_info import VehicleInfo
+import random
+from functools import partial
+from smarts_imitation.utils.env_split import to_ordered_dict
 
 
-def split_train_test(scenarios, test_ratio):
-    train_vehicle_ids = {}
-    test_vehicle_ids = {}
-    scenario_iterator = Scenario.scenario_variations(
-        [scenarios], list([]), shuffle_scenarios=False, circular=False
-    )  # scenarios with different traffic histories.
+def split_train_test(scenario_vehicles, test_ratio):
+    scenario_vehicles = to_ordered_dict(scenario_vehicles)
+    train_vehicles = defaultdict(partial(defaultdict, list))
+    test_vehicles = defaultdict(partial(defaultdict, list))
 
-    scenario_vehicle_ids = []
-    for scenario in scenario_iterator:
-        traffic_name = scenario._traffic_history.name
-        vehicle_missions = scenario.discover_missions_of_traffic_histories()
-        vehicle_ids = list(vehicle_missions.keys())
-        np.random.shuffle(vehicle_ids)
-        scenario_vehicle_ids.append((traffic_name, vehicle_ids))
+    for scenario_name, traffics in scenario_vehicles.items():
+        # split a test set for each scenario individually.
+        scenario_total_trajs_num = sum([len(x) for x in traffics.values()])
+        scenario_test_trajs_num = int(scenario_total_trajs_num * test_ratio)
+        for traffic_name, vehicles in traffics.items():
+            if 0 < scenario_test_trajs_num < len(vehicles):
+                random.shuffle(vehicles)
+                test_vehicles[scenario_name][traffic_name] = vehicles[
+                    :scenario_test_trajs_num
+                ]
+                train_vehicles[scenario_name][traffic_name] = vehicles[
+                    scenario_test_trajs_num:
+                ]
+                scenario_test_trajs_num = 0
+            elif (
+                scenario_test_trajs_num > 0 and len(vehicles) <= scenario_test_trajs_num
+            ):
+                test_vehicles[scenario_name][traffic_name] = vehicles
+                scenario_test_trajs_num -= len(vehicles)
+            elif scenario_test_trajs_num == 0:
+                train_vehicles[scenario_name][traffic_name] = vehicles
+            else:
+                raise ValueError
 
-    total_trajs_num = sum([len(x[1]) for x in scenario_vehicle_ids])
-    test_trajs_num = int(total_trajs_num * test_ratio)
-    for traffic_name, vehicle_ids in scenario_vehicle_ids[::-1]:
-        if 0 < test_trajs_num < len(vehicle_ids):
-            test_vehicle_ids[traffic_name] = vehicle_ids[:test_trajs_num]
-            train_vehicle_ids[traffic_name] = vehicle_ids[test_trajs_num:]
-            test_trajs_num = 0
-        elif test_trajs_num > 0 and len(vehicle_ids) <= test_trajs_num:
-            test_vehicle_ids[traffic_name] = vehicle_ids
-            test_trajs_num -= len(vehicle_ids)
-        elif test_trajs_num == 0:
-            train_vehicle_ids[traffic_name] = vehicle_ids
-        else:
-            raise ValueError
+    # keep order
+    train_vehicles = to_ordered_dict(train_vehicles)
+    test_vehicles = to_ordered_dict(test_vehicles)
+
     print(
         "train_vehicle_ids_number: {}".format(
-            {key: len(id_list) for key, id_list in train_vehicle_ids.items()}
+            {
+                scenario_name: {
+                    traffic_name: len(vehicles)
+                    for traffic_name, vehicles in traffics.items()
+                }
+                for scenario_name, traffics in train_vehicles.items()
+            }
         )
     )
     print(
         "test_vehicle_ids_number: {}".format(
-            {key: len(id_list) for key, id_list in test_vehicle_ids.items()}
+            {
+                scenario_name: {
+                    traffic_name: len(vehicles)
+                    for traffic_name, vehicles in traffics.items()
+                }
+                for scenario_name, traffics in test_vehicles.items()
+            }
         )
     )
-    # keep order
-    train_vehicle_ids = OrderedDict(sorted(train_vehicle_ids.items()))
-    test_vehicle_ids = OrderedDict(sorted(test_vehicle_ids.items()))
 
-    return train_vehicle_ids, test_vehicle_ids
+    return train_vehicles, test_vehicles
 
 
 def convert_single_obs(single_observation, observation_adapter):
@@ -131,16 +148,23 @@ def calculate_actions(raw_observations, raw_next_observations, dt=0.1):
 
 def work_process(
     trajs_queue,
-    train_vehicle_ids,
     scenario,
     obs_stack_size,
     feature_list,
     closest_neighbor_num,
     use_rnn,
 ):
-    agent_spec = agent.get_agent_spec(feature_list, closest_neighbor_num)
+    all_vehicle_ids = scenario.discover_missions_of_traffic_histories().keys()
+    scenario_name = scenario.name
+    traffic_name = scenario._traffic_history.name
+
+    agent_spec = agent.get_agent_spec(
+        feature_list=feature_list,
+        closest_neighbor_num=closest_neighbor_num,
+    )
     observation_adapter = adapter.get_observation_adapter(
-        feature_list, closest_neighbor_num
+        feature_list=feature_list,
+        closest_neighbor_num=closest_neighbor_num,
     )
 
     smarts = SMARTS(
@@ -149,7 +173,6 @@ def work_process(
     )
 
     """ Reset environment. """
-    traffic_name = scenario._traffic_history.name
 
     prev_vehicles = set()
     path_builders = {}
@@ -199,19 +222,33 @@ def work_process(
 
         """ Handle terminated vehicles. """
         for vehicle in done_vehicles:
-            if vehicle.split("-")[-1] in train_vehicle_ids:
+            if (
+                vehicle.split("-")[-1] in all_vehicle_ids
+                and "Agent-" + vehicle in path_builders
+            ):
                 cur_path_builder = path_builders["Agent-" + vehicle]
                 cur_path_builder["agent_0"]["terminals"][-1] = True
-                trajs_queue.put(cur_path_builder)
-                print(f"{traffic_name} Agent-{vehicle} Ended")
+                vehicle_id = vehicle.split("-")[-1]
+                vehicle_info = VehicleInfo(
+                    vehicle_id=vehicle_id,
+                    start_time=None,
+                    end_time=None,
+                    scenario_name=scenario_name,
+                    traffic_name=traffic_name,
+                    ttc=None,
+                )
+                trajs_queue.put((vehicle_info, cur_path_builder))
+                print(f"{scenario_name}-{traffic_name} Agent-{vehicle} Ended")
 
         """ Store data in the corresponding path builder. """
         vehicles = next_observations.keys()
 
         for vehicle in vehicles:
-            if vehicle.split("-")[-1] in train_vehicle_ids and vehicle in observations:
+            if vehicle.split("-")[-1] in all_vehicle_ids and vehicle in observations:
                 if vehicle not in path_builders:
-                    path_builders[vehicle] = PathBuilder(["agent_0"])
+                    path_builders[vehicle] = PathBuilder(
+                        ["agent_0"], scenario_name, traffic_name
+                    )
 
                 path_builders[vehicle]["agent_0"].add_all(
                     observations=observations[vehicle],
@@ -224,32 +261,30 @@ def work_process(
         raw_observations = raw_next_observations
         observations = next_observations
 
-    print(f"worker process: {traffic_name} finished!")
+    print(f"worker process: {scenario_name}-{traffic_name} finished!")
 
 
 def sample_demos(
-    train_vehicle_ids,
-    scenarios,
+    scenarios_paths,
+    save_path,
+    test_ratio,
     obs_stack_size,
     feature_list,
     closest_neighbor_num,
     use_rnn,
 ):
     scenario_iterator = Scenario.scenario_variations(
-        [scenarios], list([]), shuffle_scenarios=False, circular=False
+        scenarios_paths, list([]), shuffle_scenarios=False, circular=False
     )  # scenarios with different traffic histories.
 
-    worker_processes = []
     trajs_queue = Queue()  # Queues are process safe.
     for scenario in scenario_iterator:
+        scenario_name = scenario.name
         traffic_name = scenario._traffic_history.name
-        if traffic_name not in train_vehicle_ids:
-            continue
         p = Process(
             target=work_process,
             args=(
                 trajs_queue,
-                train_vehicle_ids[traffic_name],
                 scenario,
                 obs_stack_size,
                 feature_list,
@@ -258,58 +293,59 @@ def sample_demos(
             ),
             daemon=True,
         )
-        print(f"Traffic {traffic_name} start sampling.")
+        print(f"Scenario-{scenario_name}, Traffic-{traffic_name} start sampling.")
         p.start()
-        worker_processes.append(p)
 
-    # Don not call p.join().
-    demo_trajs = []
-    while True:  # not reliable
+    # Do not call p.join().
+    demo_trajs = {}
+    scenario_vehicles = defaultdict(partial(defaultdict, list))
+    while True:
         try:
             if len(demo_trajs) == 0:
-                traj = trajs_queue.get(block=True)
+                vehicle_info, traj = trajs_queue.get(block=True)
             else:
-                traj = trajs_queue.get(block=True, timeout=100)
-            demo_trajs.append(traj)
+                vehicle_info, traj = trajs_queue.get(block=True, timeout=100)
+            # assert vehicle_info not in demo_trajs, f"vehicle_info: {vehicle_info}"
+            demo_trajs[vehicle_info] = traj
+            scenario_vehicles[vehicle_info.scenario_name][
+                vehicle_info.traffic_name
+            ].append(vehicle_info)
             print(f"main process: collected trajs num: {len(demo_trajs)}")
         except queue.Empty:
             print("Queue empty! stop collecting.")
             break
     print(f"Append to buffer finished! total {len(demo_trajs)} trajectories!")
-    return demo_trajs
+
+    train_vehicles, test_vehicles = split_train_test(scenario_vehicles, test_ratio)
+
+    with open(save_path / "train_vehicles.pkl", "wb") as f:
+        pickle.dump(train_vehicles, f)
+    with open(save_path / "test_vehicles.pkl", "wb") as f:
+        pickle.dump(test_vehicles, f)
+
+    train_demo_trajs = []
+    for scenario_name, traffics in train_vehicles.items():
+        for traffic_name, vehicles in traffics.items():
+            for vehicle in vehicles:
+                train_demo_trajs.append(demo_trajs[vehicle])
+
+    return train_demo_trajs
 
 
 def experiment(specs):
     time_start = time.time()
-    save_path = Path("./demos/ngsim")
+    scenario_names = specs["env_specs"]["scenario_names"]
+    save_path = Path(f"./demos/" + "_".join(scenario_names))
     os.makedirs(save_path, exist_ok=True)
 
-    if not os.path.exists(save_path / "train_ids.pkl") or not os.path.exists(
-        save_path / "test_ids.pkl"
-    ):
-        print(
-            "\nSplit training and testing vehicles, with test ratio {}\n".format(
-                specs["test_ratio"]
-            )
-        )
-        train_vehicle_ids, test_vehicle_ids = split_train_test(
-            ScenarioZoo.get_scenario("NGSIM-I80"),
-            specs["test_ratio"],
-        )
-
-        with open(save_path / "train_ids.pkl", "wb") as f:
-            pickle.dump(train_vehicle_ids, f)
-        with open(save_path / "test_ids.pkl", "wb") as f:
-            pickle.dump(test_vehicle_ids, f)
-
-    else:
-        with open(save_path / "train_ids.pkl", "rb") as f:
-            train_vehicle_ids = pickle.load(f)
-
     # obtain demo paths
+    scenarios_paths = [
+        ScenarioZoo.get_scenario(scenario_name) for scenario_name in scenario_names
+    ]
     demo_trajs = sample_demos(
-        train_vehicle_ids,
-        ScenarioZoo.get_scenario("NGSIM-I80"),
+        scenarios_paths,
+        save_path,
+        specs["test_ratio"],
         specs["env_specs"]["env_kwargs"]["obs_stack_size"],
         feature_list=FeatureGroup[specs["env_specs"]["env_kwargs"]["feature_type"]],
         closest_neighbor_num=specs["env_specs"]["env_kwargs"]["closest_neighbor_num"],
@@ -324,8 +360,7 @@ def experiment(specs):
 
     with open(
         Path(save_path).joinpath(
-            "smarts_{}_{}_stack-{}.pkl".format(
-                exp_specs["env_specs"]["scenario_name"],
+            "smarts_{}_stack-{}.pkl".format(
                 exp_specs["env_specs"]["env_kwargs"]["feature_type"],
                 exp_specs["env_specs"]["env_kwargs"]["obs_stack_size"],
             ),

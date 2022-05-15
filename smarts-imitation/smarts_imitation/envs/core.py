@@ -1,8 +1,7 @@
-from typing import List
 import numpy as np
 import gym
-from dataclasses import replace
 from collections import deque
+from typing import Dict
 
 from envision.client import Client as Envision
 from smarts.core.smarts import SMARTS
@@ -12,39 +11,65 @@ from smarts.core.traffic_history_provider import TrafficHistoryProvider
 from smarts_imitation.utils import agent
 from smarts_imitation.utils.common import subscribe_features
 from smarts_imitation.utils.feature_group import FeatureGroup
+from smarts.core.utils.math import rounder_for_dt
+from smarts_imitation.utils.vehicle_info import VehiclePosition
+from smarts.core.plan import (
+    Mission,
+    TraverseGoal,
+    VehicleSpec,
+    default_entry_tactic,
+)
 
 
 class SMARTSImitation:
     def __init__(
         self,
-        scenarios: List[str],
+        scenario_path: str,
         traffic_name: None,
         action_range: np.ndarray,
         obs_stack_size: int = 1,
-        vehicle_ids: np.ndarray = None,
+        vehicles: Dict = None,
         control_all_vehicles: bool = False,
         control_vehicle_num: int = 1,
         feature_type: str = "radius",
         closest_neighbor_num: int = 6,
         use_rnn: bool = False,
+        collision_done: bool = True,
         envision: bool = False,
         envision_sim_name: str = None,
         envision_record_data_replay_path: str = None,
         headless: bool = False,
     ):
+        """
+        Args:
+            vehicles: Dict[scenario_name: Dict[traffic_name: List[vehicle_info, ...]]]
+                vehicle_info: v_info = namedtuple(
+                        vehicle_id=vehicle_id,
+                        start_time=None,
+                        end_time=None,
+                        scenario_name="xxx",
+                        traffic_name="xxx",
+                        ttc=None,
+                    )
+                    start_time (Optional): Specify the start_time of the vehicle (can not be
+                        "first-seen-time"). Default None (use the first-seen-time).
+                    end_time (Optional): Specify the end_time of the vehicle (can not be
+                        "last-seen-time"). Default None (use the last-seen-time).
+        """
         self.feature_list = FeatureGroup[feature_type]
         self.control_all_vehicles = control_all_vehicles
         self.obs_stack_size = obs_stack_size
         self.use_rnn = use_rnn
+        self.collision_done = collision_done
         self.traffic_name = traffic_name
 
         self.control_vehicle_num = self.n_agents = control_vehicle_num
-        self.vehicle_ids = vehicle_ids
-        if vehicle_ids is None:
+        self.vehicles = vehicles
+        if vehicles is None:
             print("Use All Vehicles")
 
         self.scenarios_iterator = Scenario.scenario_variations(
-            scenarios, [], shuffle_scenarios=False, circular=False
+            [scenario_path], [], shuffle_scenarios=False, circular=False
         )
         self._init_scenario()
         # Num of all combinations of different controlled vehicles used.
@@ -52,13 +77,15 @@ class SMARTSImitation:
 
         if self.control_all_vehicles:
             print("Control All Vehicles")
-            assert vehicle_ids is None
+            assert vehicles is None
             # This must be called after self._init_scenario(), otherwise self.vehicle_ids is not initialized.
             self.control_vehicle_num = self.n_agents = len(self.vehicle_ids)
         self.aid_to_vid = {}
         self.agent_ids = [f"agent_{i}" for i in range(self.n_agents)]
 
-        self.agent_spec = agent.get_agent_spec(self.feature_list, closest_neighbor_num)
+        self.agent_spec = agent.get_agent_spec(
+            self.feature_list, closest_neighbor_num, collision_done
+        )
 
         feature_spaces = subscribe_features(
             self.feature_list, closest_neighbor_num=closest_neighbor_num
@@ -156,6 +183,7 @@ class SMARTSImitation:
 
         info_n = {}
         for agent_id in full_obs_n.keys():
+            vehicle_id = self.aid_to_vid[agent_id]
             info_n[agent_id] = {}
             info_n[agent_id]["reached_goal"] = raw_observation_n[
                 agent_id
@@ -164,9 +192,42 @@ class SMARTSImitation:
                 len(raw_observation_n[agent_id].events.collisions) > 0
             )
             info_n[agent_id]["car_id"] = self.aid_to_vid[agent_id]
-            info_n[agent_id]["raw_position"] = raw_observation_n[
+            info_n[agent_id]["lane_index"] = raw_observation_n[
                 agent_id
-            ].ego_vehicle_state.position
+            ].ego_vehicle_state.lane_index
+            raw_position = raw_observation_n[agent_id].ego_vehicle_state.position
+            info_n[agent_id]["raw_position"] = raw_position
+
+            hist_cur_position = self._get_vehicle_current_history_position(vehicle_id)
+
+            if hist_cur_position is None:
+                dist_to_hist_cur_pos = None
+            else:
+                dist_to_hist_cur_pos = np.linalg.norm(
+                    [
+                        raw_position[0] - hist_cur_position.position_x,
+                        raw_position[1],
+                        hist_cur_position.position_y,
+                    ]
+                )
+            info_n[agent_id]["dist_to_hist_cur_pos"] = dist_to_hist_cur_pos
+
+            history_final_pos = self.vehicle_final_positions[vehicle_id]
+            dist_to_hist_final_pos = np.linalg.norm(
+                [
+                    raw_position[0] - history_final_pos.position_x,
+                    raw_position[1],
+                    history_final_pos.position_y,
+                ]
+            )
+            info_n[agent_id]["dist_to_hist_final_pos"] = dist_to_hist_final_pos
+
+        if self.time_slice:
+            """vehicle_end_times are specified by user."""
+            for agent_id in full_obs_n.keys():
+                vehicle_id = self.aid_to_vid[agent_id]
+                if self.smarts.elapsed_sim_time > self.vehicle_end_times[vehicle_id]:
+                    self.done_n[agent_id] = True
 
         return (
             full_obs_n,
@@ -186,10 +247,10 @@ class SMARTSImitation:
         if self.vehicle_itr + self.n_agents > len(self.vehicle_ids):
             self.vehicle_itr = 0
 
-        traffic_history_provider = self.smarts.get_provider_by_type(
+        self.traffic_history_provider = self.smarts.get_provider_by_type(
             TrafficHistoryProvider
         )
-        assert traffic_history_provider
+        assert self.traffic_history_provider
         self.active_vehicle_ids = self.vehicle_ids[
             self.vehicle_itr : self.vehicle_itr + self.n_agents
         ]
@@ -199,26 +260,23 @@ class SMARTSImitation:
 
         agent_interfaces = {}
         # Find the earliest start time among all selected vehicles.
-        history_start_time = np.inf
+        self.history_start_time = np.inf
         for agent_id in self.agent_ids:
             vehicle_id = self.aid_to_vid[agent_id]
             agent_interfaces[agent_id] = self.agent_spec.interface
-            if history_start_time > self.vehicle_missions[vehicle_id].start_time:
-                history_start_time = self.vehicle_missions[vehicle_id].start_time
+            self.history_start_time = min(
+                self.history_start_time, self.vehicle_start_times[vehicle_id]
+            )
 
-        traffic_history_provider.start_time = history_start_time
-        ego_missions = {}
+        self.ego_missions = {}
         for agent_id in self.agent_ids:
             vehicle_id = self.aid_to_vid[agent_id]
-            ego_missions[agent_id] = replace(
-                self.vehicle_missions[vehicle_id],
-                start_time=self.vehicle_missions[vehicle_id].start_time
-                - history_start_time,
-            )
-        self.scenario.set_ego_missions(ego_missions)
+            self.ego_missions[agent_id] = self.vehicle_missions[vehicle_id]
+
+        self.scenario.set_ego_missions(self.ego_missions)
         self.smarts.switch_ego_agents(agent_interfaces)
 
-        raw_observation_n = self.smarts.reset(self.scenario)
+        raw_observation_n = self.smarts.reset(self.scenario, self.history_start_time)
         full_obs_n = self._convert_obs(raw_observation_n)
         if self.obs_stack_size > 1:
             for agent_id in full_obs_n.keys():
@@ -235,6 +293,11 @@ class SMARTSImitation:
                         axis=-1,
                     )
 
+        self.vehicle_final_positions = {
+            vehicle_id: self._get_vehicle_final_history_position(vehicle_id)
+            for vehicle_id in self.active_vehicle_ids
+        }
+
         self.done_n = {a_id: False for a_id in self.agent_ids}
         self.vehicle_itr += 1
         self.episode_count += 1
@@ -247,23 +310,163 @@ class SMARTSImitation:
                 self.scenario = scenario
                 break
         assert self.scenario is not None
+        self.scenario_name = self.scenario.name
 
-        self.vehicle_missions = self.scenario.discover_missions_of_traffic_histories()
-        if self.vehicle_ids is None:
-            self.vehicle_ids = np.array(list(self.vehicle_missions.keys()))
+        self._init_vehicle_missions()
+
         # TODO(zbzhu): Need further discussion here, i.e., how to maintain BOTH randomness and sorted order of vehicles.
         if self.control_vehicle_num == 1:
             np.random.shuffle(self.vehicle_ids)
             self.vehicle_itr = 0
         else:
             # Sort vehicle id by starting time, so that we can get adjacent vehicles easily.
-            vehicle_start_times = [
-                self.vehicle_missions[v_id].start_time for v_id in self.vehicle_ids
-            ]
-            self.vehicle_ids = self.vehicle_ids[np.argsort(vehicle_start_times)]
+            self.vehicle_ids = self.vehicle_ids[np.argsort(self.vehicle_start_times)]
             self.vehicle_itr = np.random.choice(len(self.vehicle_ids))
+
         self.episode_count = 0
 
     def destroy(self):
         if self.smarts is not None:
             self.smarts.destroy()
+
+    def _vehicle_pos_between(self, vehicle_id: str, start_time: float, end_time: float):
+        """Find the vehicle states between the given history times."""
+        query = """SELECT T.position_x, T.position_y, T.sim_time
+                   FROM Trajectory AS T
+                   WHERE T.vehicle_id = ? AND T.sim_time > ? AND T.sim_time <= ? 
+                   ORDER BY T.sim_time DESC"""
+        rows = self.scenario._traffic_history._query_list(
+            query, (vehicle_id, start_time, end_time)
+        )
+        return (VehiclePosition(*row) for row in rows)
+
+    def _get_vehicle_current_history_position(self, vehicle_id):
+        """Get the corresponding vehicle position at "self.smarts.elapsed_sim_time"
+        from traffic history given the vehicle_id. The function is often used
+        to help to compute the trajectory-similarity between the controlled vehicle
+        and the corresponding history ground truth.
+        """
+        rounder = rounder_for_dt(self.smarts._last_dt)
+        history_time = rounder(self.smarts.elapsed_sim_time)
+        prev_time = rounder(history_time - self.smarts._last_dt)
+
+        rows = self._vehicle_pos_between(vehicle_id, prev_time, history_time)
+        rows = list(rows)
+        if len(rows) == 0:
+            print(
+                f"Warning: can't get current vehicle history position: id {vehicle_id}"
+            )
+            return None
+        else:
+            return rows[0]
+
+    def _get_vehicle_final_history_position(self, vehicle_id):
+        """Get the corresponding vehicle final position from trajectory history. The function
+        is often used to help to compute the trajectory-similarity between the controlled
+        vehicle.
+
+        If self.vehicle_end_times is given (not None):
+            it will return the vehicle position at time "self.vehicle_end_times[vehicle_id]".
+        else,
+            it will return the position at last-seen-time of the vehicle.
+        """
+        if self.time_slice:
+            rounder = rounder_for_dt(self.smarts._last_dt)
+            end_time = rounder(self.vehicle_end_times[vehicle_id])
+            start_time = end_time - self.smarts._last_dt
+            rows = self._vehicle_pos_between(vehicle_id, start_time, end_time)
+            rows = list(rows)
+            assert len(rows) > 0, f"final rows: {rows}"
+            return rows[0]
+        else:
+            rows = self.scenario._traffic_history.vehicle_trajectory(vehicle_id)
+            rows = list(rows)
+            assert len(rows) > 0
+            tr = rows[-1]
+            final_position = VehiclePosition(tr.position_x, tr.position_y, None)
+            return final_position
+
+    def _discover_sliced_vehicle_missions(self):
+        """Retrieves the missions of traffic history vehicles given the start_time of each vehicle.
+
+        The function is used to get the vehicle_mission when the vehicle_start_times is
+        "User-defined" (not the first-seen-times of the vehicles, is often used to define some
+        special cases, such as cut-in, fail-cases, etc.), since Scenario.discover_missions_of_traffic_histories()
+        can only get the missions at fist-seen-time of the vehicles.
+        """
+        vehicle_missions = {}
+        for v in self.vehicles:
+            vehicle_id = v.vehicle_id
+            start_time = self.vehicle_start_times[vehicle_id]
+            rows = self._vehicle_pos_between(
+                vehicle_id,
+                start_time=start_time - 0.1,
+                end_time=start_time,
+            )
+            rows = list(rows)
+            assert len(rows) > 0, rows
+            sim_time = rows[0].sim_time
+            start, speed = self.scenario.get_vehicle_start_at_time(vehicle_id, sim_time)
+            entry_tactic = default_entry_tactic(speed)
+            veh_config_type = self.scenario._traffic_history.vehicle_config_type(
+                vehicle_id
+            )
+            veh_dims = self.scenario._traffic_history.vehicle_dims(vehicle_id)
+            vehicle_missions[vehicle_id] = Mission(
+                start=start,
+                entry_tactic=entry_tactic,
+                goal=TraverseGoal(self.scenario.road_map),
+                start_time=sim_time,
+                vehicle_spec=VehicleSpec(
+                    veh_id=vehicle_id,
+                    veh_config_type=veh_config_type,
+                    dimensions=veh_dims,
+                ),
+            )
+
+        return vehicle_missions
+
+    def _init_vehicle_missions(self):
+        """
+        Get the initial conditions of controlled vehicles (position, speed, heading, etc.)
+        """
+
+        if self.vehicles is None:
+            """No vehicles is specified by user.
+            Control all vehicles and use "first-seen-time" and "last-seen-time" by default.
+            """
+            self.time_slice = False
+            self.vehicle_missions = (
+                self.scenario.discover_missions_of_traffic_histories()
+            )
+            self.vehicle_ids = list(self.vehicle_missions.keys())
+            self.vehicle_start_times = {
+                v_id: self.vehicle_missions[v_id].start_time
+                for v_id in self.vehicle_ids
+            }
+        elif self.vehicles[0].start_time is None:
+            """The "start_times" and "end_times" of the vehicles are not specified by user.
+            Use "first-seen-times" and "last-seen-times" by default.
+            """
+            self.time_slice = False
+            self.vehicle_missions = (
+                self.scenario.discover_missions_of_traffic_histories()
+            )
+            self.vehicle_ids = list(self.vehicle_missions.keys())
+            self.vehicle_start_times = {
+                v_id: self.vehicle_missions[v_id].start_time
+                for v_id in self.vehicle_ids
+            }
+        elif self.vehicles[0].start_time is not None:
+            """Use the "start_times" and "end_times" of the vehicles specified by user."""
+            self.time_slice = True
+            self.vehicle_ids = [v.vehicle_id for v in self.vehicles]
+
+            self.vehicle_start_times = {
+                v.vehicle_id: v.start_time for v in self.vehicles
+            }
+            self.vehicle_end_times = {v.vehicle_id: v.end_time for v in self.vehicles}
+            self.vehicle_missions = self._discover_sliced_vehicle_missions()
+
+        else:
+            raise NotImplementedError

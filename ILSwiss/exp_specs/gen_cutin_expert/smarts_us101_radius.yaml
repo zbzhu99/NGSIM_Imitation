@@ -1,0 +1,29 @@
+meta_data:
+  script_path: run_scripts/gen_smarts_cutin_demos.py
+  exp_name: gen_smarts_cutin_demos_ngsim_us101
+  description: Generate cutin demonstrations for imitation learning algorithms
+  num_workers: 1
+  using_gpus: true
+# -----------------------------------------------------------------------------
+variables: {}
+
+# -----------------------------------------------------------------------------
+constants:
+
+  seed: 0
+  test_ratio: 0.15
+
+  env_specs:
+    env_creator: "smarts"
+    scenario_names:
+      - "ngsim_us101"
+    env_kwargs:
+      use_rnn: false
+      closest_neighbor_num: 8
+      obs_stack_size: 1
+      feature_type: "radius"
+      angle_threshold: 1.57
+      cutin_dist_threshold: 15.0
+      steps_before_cutin: 25
+      steps_after_cutin: 25
+      divide_by_ttc: false

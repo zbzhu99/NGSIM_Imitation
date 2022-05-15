@@ -1,6 +1,6 @@
 meta_data:
   script_path: run_scripts/gen_smarts_demos.py
-  exp_name: gen_smarts_demos_ngsim
+  exp_name: gen_smarts_demos_ngsim_i80
   description: Generate demonstrations for imitation learning algorithms
   num_workers: 1
   using_gpus: true
@@ -15,7 +15,8 @@ constants:
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "NGSIM-I80"
+    scenario_names:
+      - "ngsim_i80"
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 8

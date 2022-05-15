@@ -20,17 +20,20 @@ constants:
   scale_env_with_demo_stats: true
 
   disc_num_blocks: 2
-  disc_hid_dim: 128
+  disc_hid_dim: 512
   disc_hid_act: tanh
   disc_use_bn: false
   disc_clamp_magnitude: 10.0
 
-  policy_net_size: 256
-  policy_num_hidden_layers: 2
+  policy_net_size: 512
+  policy_num_hidden_layers: 3
 
   adv_irl_params:
     mode: 'gail'
     state_only: false
+
+    best_key: "Test agent_0 Collision Rate all"
+    best_criterion: "smallest"
 
     num_epochs: 100
     num_steps_per_epoch: 500000
@@ -50,6 +53,7 @@ constants:
     num_policy_updates_per_loop_iter: 1
 
     disc_lr: 0.0003
+    disc_focal_loss_gamma: 0.0
     disc_momentum: 0.9
     use_grad_pen: true
     disc_optim_batch_size: 256
@@ -76,12 +80,14 @@ constants:
 
   env_specs:
     env_creator: "smarts"
-    scenario_name: "NGSIM-I80"
+    scenario_names:
+      - "ngsim_i80"
     env_kwargs:
       use_rnn: false
       closest_neighbor_num: 6
       obs_stack_size: 4
       feature_type: "lane"
+      collision_done: true
     training_env_specs:
       env_num: 20
       wait_num: 10
