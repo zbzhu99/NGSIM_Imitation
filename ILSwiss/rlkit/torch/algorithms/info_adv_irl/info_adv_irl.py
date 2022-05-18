@@ -107,6 +107,13 @@ class InfoAdvIRL(AdvIRL):
                 agent_id,
                 True,
             )
+            if self.absorbing:
+                policy_batch_from_policy_buffer = self.wrap_for_absorbing_states(
+                    policy_batch_from_policy_buffer
+                )
+                policy_batch_from_expert_buffer = self.wrap_for_absorbing_states(
+                    policy_batch_from_expert_buffer, ignore_terminal=True
+                )
             policy_batch = {}
             for k in policy_batch_from_policy_buffer:
                 policy_batch[k] = torch.cat(
@@ -118,6 +125,8 @@ class InfoAdvIRL(AdvIRL):
                 )
         else:
             policy_batch = self.get_batch(self.policy_optim_batch_size, agent_id, False)
+            if self.absorbing:
+                policy_batch = self.wrap_for_absorbing_states(policy_batch)
 
         obs = policy_batch["observations"]
         acts = policy_batch["actions"]
@@ -214,8 +223,72 @@ class InfoAdvIRL(AdvIRL):
         """
         policy_id = self.policy_mapping_dict[agent_id]
         batch = self.get_batch(self.posterior_optim_batch_size, agent_id, False)
+        batch = self.wrap_for_absorbing_states(batch)
         # print(f"batch.keys: {batch.keys()}")
         self.posterior_trainer_n[policy_id].train_step(batch)
+
+    def wrap_for_absorbing_states(self, batch, ignore_terminal=False):
+        """Wrap the batch with absorbing states introduced by "Discriminator Actor-Critic".
+        For a collected state-transition pair (s,a,.,s') :
+            if "s" is a terminal state, then:
+                (s,a,.,s') <-- (s,a,.,s*), where s* represents the absorbing state.
+                append another transition pair  (s*,.,.,s*) to buffer.
+
+        But here we do not append to recursive absorbing transition pair to the replay
+        buffer, but to append it to the sampled batch to keep minimal code change.
+        """
+
+        device = batch["observations"].device
+        if ignore_terminal:
+            # used for expert data generation (max-time terminate).
+            batch["terminals"] = torch.zeros_like(batch["terminals"]).to(device)
+
+        assert len(batch["observations"].shape) == 2
+        batch_size, obs_shape = batch["observations"].shape
+        terminal_index = (batch["terminals"] == 1).squeeze()
+        terminal_num = torch.sum(terminal_index)
+
+        # append recursive absorbing states pairs (S_absorbing ,...,S_absorbing)
+        if self.zero_padding_absorbing:
+            # zero padding-based absorbing_state
+            absorbing_state = torch.zeros((obs_shape,), dtype=torch.float32).to(device)
+            # use zero-padding based absorbing states, (s,a,.,s') <-- (s,a,.,s*)
+            batch["next_observations"][terminal_index][:, :] = absorbing_state
+            append_act = torch.zeros(
+                (terminal_num, batch["actions"].shape[1]), dtype=torch.float32
+            ).to(device)
+            append_r = torch.zeros((terminal_num, 1), dtype=torch.float32).to(device)
+            if "latents" in batch:
+                # random sample
+                append_latent = self.latent_distribution.sample_prior(
+                    batch_size=terminal_num
+                ).to(device)
+        else:
+            # Keep original next_observations as "absorbing states",
+            # i.e. (s,a,.,s') <-- (s,a,.,s')
+            append_act = batch["actions"][terminal_index]
+            append_r = batch["rewards"][terminal_index]
+            if "latents" in batch:
+                append_latent = batch["latents"][terminal_index]
+
+        # "append_obs" is used for both "observations" and "next_observations"
+        # to build (s*,.,.,s*) pairs.
+        append_obs = batch["next_observations"][terminal_index]
+
+        batch["observations"] = torch.cat([batch["observations"], append_obs], dim=0)
+        batch["next_observations"] = torch.cat(
+            [batch["next_observations"], append_obs], dim=0
+        )
+        batch["actions"] = torch.cat([batch["actions"], append_act], dim=0)
+        batch["rewards"] = torch.cat([batch["rewards"], append_r], dim=0)
+        # time infinity MDP
+        batch["terminals"] = torch.zeros_like(batch["rewards"], dtype=torch.float32).to(
+            device
+        )
+        if "latents" in batch:
+            batch["latents"] = torch.cat([batch["latents"], append_latent], dim=0)
+
+        return batch
 
     def get_epoch_snapshot(self, epoch):
         # snapshot = super().get_epoch_snapshot(epoch)

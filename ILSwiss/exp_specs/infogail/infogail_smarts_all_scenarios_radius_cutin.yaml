@@ -32,16 +32,18 @@ constants:
 
   categorical_latent_num: 1
   categorical_class_num: 2
-  continous_latent_num: 4
+  continous_latent_num: 1
 
-  posterior_hidden_size: 128
+  posterior_hidden_size: 256
   posterior_num_hidden_layers: 2
-  posterior_hid_act: tanh
+  posterior_hid_act: relu
 
   adv_irl_params:
-    mode: 'gail'
+    mode: 'gail2'
     state_only: false
 
+    absorbing: true
+    zero_padding_absorbing: true
 
     best_key: "Test agent_0 Collision Rate all"
     best_criterion: "smallest"
@@ -72,7 +74,7 @@ constants:
     policy_optim_batch_size: 256
     policy_optim_batch_size_from_expert: 0
     posterior_optim_batch_size: 256
-    post_r_coef: 0.0
+    post_r_coef: 10.0
 
     save_best: true
     save_epoch: false

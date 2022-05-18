@@ -17,7 +17,7 @@ sys.path.insert(0, parentdir)
 print(sys.path)
 
 from rlkit.envs import get_env
-
+from collections import defaultdict
 import rlkit.torch.utils.pytorch_util as ptu
 from rlkit.launchers.launcher_util import set_seed
 from rlkit.envs.wrappers import ProxyEnv, NormalizedBoxActEnv, ObsScaledEnv
@@ -25,7 +25,7 @@ from rlkit.torch.common.policies import MakeDeterministic
 
 from smarts_imitation import ScenarioZoo
 
-latent = [1, 0, 0, 0, 0, 0]
+latent = [0, 1, 1.0, 1.0, 1.0, 1.0]
 
 
 def experiment(variant):
@@ -35,6 +35,8 @@ def experiment(variant):
     eval_split_path = listings[variant["expert_name"]]["train_split"][0]
     with open(eval_split_path, "rb") as f:
         eval_vehicles = pickle.load(f)
+
+    trajecotries = defaultdict(list)
 
     # Can specify vehicle ids to be visualized as follows.
     for scenario_name, traffics in eval_vehicles.items():
@@ -122,6 +124,11 @@ def experiment(variant):
                         action_n
                     )
 
+                    for agent_id, env_info in env_info_n.items():
+                        vehicle_id = env.aid_to_vid[agent_id]
+                        raw_position = env_info["raw_position"][:2]
+                        trajecotries[(traffic_name, vehicle_id)].append(raw_position)
+
                     for agent_id in terminal_n.keys():
                         if terminal_n[agent_id]:
                             car_id = env_info_n[agent_id]["car_id"]
@@ -130,6 +137,17 @@ def experiment(variant):
                         print(f"terminal_n: {terminal_n}, env_info_n: {env_info_n}")
                         break
                     observation_n = next_observation_n
+    print("finished!")
+    if variant["save_trajectory"]:
+        latent_name = "".join([str(x) for x in latent])
+        save_dir = variant["trajectory_save_dir"]
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        file_name = "latent-{}.pkl".format(latent_name)
+        file_path = os.path.join(save_dir, file_name)
+        with open(file_path, "wb") as f:
+            pickle.dump(trajecotries, f)
+        print(f"save trajecories to {file_path}!")
 
 
 if __name__ == "__main__":

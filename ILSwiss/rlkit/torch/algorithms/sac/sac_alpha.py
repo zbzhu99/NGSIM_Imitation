@@ -142,6 +142,7 @@ class SoftActorCritic(Trainer):
         #     p.requires_grad = False
         # for p in self.policy.parameters():
         #     p.requires_grad = True
+
         policy_outputs = self.policy(obs, return_log_prob=True)
         new_actions, policy_mean, policy_log_std, log_pi = policy_outputs[:4]
         q1_new_acts = self.qf1(obs, new_actions)

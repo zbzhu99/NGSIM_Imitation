@@ -2,7 +2,7 @@ import abc
 import time
 from collections import OrderedDict, defaultdict
 from typing import Dict, List
-
+import copy
 import gtimer as gt
 import numpy as np
 from tqdm import tqdm
@@ -511,11 +511,16 @@ class BaseAlgorithm(metaclass=abc.ABCMeta):
                 )
 
         if add_buf:
+            new_terminal_n = copy.deepcopy(terminal_n)
+            for agent_id in new_terminal_n:
+                if new_terminal_n[agent_id] and env_info_n[agent_id]["over_max_time"]:
+                    new_terminal_n[agent_id] = False
+
             self.replay_buffer.add_sample(
                 observation_n=observation_n,
                 action_n=action_n,
                 reward_n=reward_n,
-                terminal_n=terminal_n,
+                terminal_n=new_terminal_n,
                 next_observation_n=next_observation_n,
                 env_info_n=env_info_n,
             )

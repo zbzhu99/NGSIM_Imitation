@@ -222,11 +222,15 @@ class SMARTSImitation:
             )
             info_n[agent_id]["dist_to_hist_final_pos"] = dist_to_hist_final_pos
 
+            info_n[agent_id]["over_max_time"] = False
+
         if self.time_slice:
             """vehicle_end_times are specified by user."""
             for agent_id in full_obs_n.keys():
                 vehicle_id = self.aid_to_vid[agent_id]
                 if self.smarts.elapsed_sim_time > self.vehicle_end_times[vehicle_id]:
+                    if not self.done_n[agent_id]:
+                        info_n[agent_id]["over_max_time"] = True
                     self.done_n[agent_id] = True
 
         return (
@@ -363,7 +367,7 @@ class SMARTSImitation:
     def _get_vehicle_final_history_position(self, vehicle_id):
         """Get the corresponding vehicle final position from trajectory history. The function
         is often used to help to compute the trajectory-similarity between the controlled
-        vehicle.
+        vehicle and the corresponding history ground truth.
 
         If self.vehicle_end_times is given (not None):
             it will return the vehicle position at time "self.vehicle_end_times[vehicle_id]".
@@ -392,7 +396,7 @@ class SMARTSImitation:
         The function is used to get the vehicle_mission when the vehicle_start_times is
         "User-defined" (not the first-seen-times of the vehicles, is often used to define some
         special cases, such as cut-in, fail-cases, etc.), since Scenario.discover_missions_of_traffic_histories()
-        can only get the missions at fist-seen-time of the vehicles.
+        can only get the missions at first-seen-time of the vehicles.
         """
         vehicle_missions = {}
         for v in self.vehicles:

@@ -15,7 +15,10 @@ constants:
   traj_num: -1
   scale_env_with_demo_stats: true
 
-  log_path: "logs/<path_to_log_files>/"
+  #log_path: "logs/<path_to_log_files>/"
+  log_path: "logs/infogail/coef5.0/"
+  save_trajectory: false
+  trajectory_save_dir: "./trajectories/"
 
   eval_deterministic: true
 

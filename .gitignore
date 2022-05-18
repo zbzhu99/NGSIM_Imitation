@@ -150,4 +150,5 @@ traffic_data/
 # envision replay files
 *.jsonl
 .idea
-./cpp_model/
+cpp_model
+trajectories

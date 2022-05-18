@@ -115,6 +115,7 @@ def experiment(variant):
             # build the policy models
             net_size = variant["policy_net_size"]
             num_hidden = variant["policy_num_hidden_layers"]
+
             qf1 = FlattenMlp(
                 hidden_sizes=num_hidden * [net_size],
                 input_size=obs_dim + action_dim,
@@ -137,10 +138,13 @@ def experiment(variant):
             )
 
             # build the discriminator model
-            disc_model = MLPDisc(
+            disc_input_dim = (
                 obs_dim + action_dim
                 if not variant["adv_irl_params"]["state_only"]
                 else 2 * obs_dim,
+            )
+            disc_model = MLPDisc(
+                disc_input_dim[0],
                 num_layer_blocks=variant["disc_num_blocks"],
                 hid_dim=variant["disc_hid_dim"],
                 hid_act=variant["disc_hid_act"],

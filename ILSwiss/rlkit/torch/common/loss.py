@@ -16,6 +16,8 @@ class BCEFocalLoss(nn.Module):
         target_one_hot = F.one_hot(targets, num_classes=2)
         weight = torch.pow(1.0 - soft_inputs, self.gamma)
         focal = -weight * torch.log(soft_inputs)
-        assert target_one_hot.shape == focal.shape
+        assert (
+            target_one_hot.shape == focal.shape
+        ), f" {target_one_hot.shape}, {focal.shape}"
         loss = torch.sum(target_one_hot * focal, dim=-1).mean()
         return loss

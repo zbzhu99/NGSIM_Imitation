@@ -51,6 +51,8 @@ class AdvIRL(TorchBaseAlgorithm):
         disc_optimizer_class=optim.Adam,
         use_grad_pen=True,
         grad_pen_weight=10,
+        absorbing=False,
+        zero_padding_absorbing=False,
         rew_clip_min=None,
         rew_clip_max=None,
         **kwargs,
@@ -66,6 +68,8 @@ class AdvIRL(TorchBaseAlgorithm):
 
         self.mode = mode
         self.state_only = state_only
+        self.absorbing = absorbing
+        self.zero_padding_absorbing = zero_padding_absorbing
 
         self.expert_replay_buffer = expert_replay_buffer
 
@@ -112,6 +116,60 @@ class AdvIRL(TorchBaseAlgorithm):
 
         self.disc_eval_statistics = None
 
+    def wrap_for_absorbing_states(self, batch, ignore_terminal=False):
+        """Wrap the batch with absorbing states introduced by "Discriminator Actor-Critic".
+        For a collected state-transition pair (s,a,.,s') :
+            if "s" is a terminal state, then:
+                (s,a,.,s') <-- (s,a,.,s*), where s* represents the absorbing state.
+                append another transition pair  (s*,.,.,s*) to buffer.
+
+        But here we do not append to recursive absorbing transition pair to the replay
+        buffer, but to append it to the sampled batch to keep minimal code change.
+        """
+
+        device = batch["observations"].device
+        if ignore_terminal:
+            # used for expert data generation (max-time terminate).
+            batch["terminals"] = torch.zeros_like(batch["terminals"]).to(device)
+
+        assert len(batch["observations"].shape) == 2
+        batch_size, obs_shape = batch["observations"].shape
+        terminal_index = (batch["terminals"] == 1).squeeze()
+        terminal_num = torch.sum(terminal_index)
+
+        # append recursive absorbing states pairs (S_absorbing ,...,S_absorbing)
+        if self.zero_padding_absorbing:
+            # zero padding-based absorbing_state
+            absorbing_state = torch.zeros((obs_shape,), dtype=torch.float32).to(device)
+            # use zero-padding based absorbing states, (s,a,.,s') <-- (s,a,.,s*)
+            batch["next_observations"][terminal_index][:, :] = absorbing_state
+            append_act = torch.zeros(
+                (terminal_num, batch["actions"].shape[1]), dtype=torch.float32
+            ).to(device)
+            append_r = torch.zeros((terminal_num, 1), dtype=torch.float32).to(device)
+        else:
+            # Keep original next_observations as "absorbing states",
+            # i.e. (s,a,.,s') <-- (s,a,.,s')
+            append_act = batch["actions"][terminal_index]
+            append_r = batch["rewards"][terminal_index]
+
+        # "append_obs" is used for both "observations" and "next_observations"
+        # to build (s*,.,.,s*) pairs.
+        append_obs = batch["next_observations"][terminal_index]
+
+        batch["observations"] = torch.cat([batch["observations"], append_obs], dim=0)
+        batch["next_observations"] = torch.cat(
+            [batch["next_observations"], append_obs], dim=0
+        )
+        batch["actions"] = torch.cat([batch["actions"], append_act], dim=0)
+        batch["rewards"] = torch.cat([batch["rewards"], append_r], dim=0)
+        # time infinity MDP
+        batch["terminals"] = torch.zeros_like(batch["rewards"], dtype=torch.float32).to(
+            device
+        )
+
+        return batch
+
     def get_batch(self, batch_size, agent_id, from_expert, keys=None):
         if from_expert:
             buffer = self.expert_replay_buffer
@@ -154,14 +212,38 @@ class AdvIRL(TorchBaseAlgorithm):
 
         self.disc_optimizer_n[policy_id].zero_grad()
 
-        keys = ["observations"]
-        if self.state_only:
-            keys.append("next_observations")
+        if self.absorbing:
+            keys = [
+                "observations",
+                "actions",
+                "rewards",
+                "next_observations",
+                "terminals",
+            ]
         else:
-            keys.append("actions")
+            keys = ["observations"]
+            if self.state_only:
+                keys.append("next_observations")
+            else:
+                keys.append("actions")
 
         expert_batch = self.get_batch(self.disc_optim_batch_size, agent_id, True, keys)
         policy_batch = self.get_batch(self.disc_optim_batch_size, agent_id, False, keys)
+
+        if self.absorbing:
+            expert_batch = self.wrap_for_absorbing_states(
+                expert_batch, ignore_terminal=True
+            )
+            policy_batch = self.wrap_for_absorbing_states(policy_batch)
+            expert_batch_size = expert_batch["observations"].shape[0]
+            policy_batch_size = policy_batch["observations"].shape[0]
+            self.bce_targets = torch.cat(
+                [
+                    torch.ones((expert_batch_size, 1)),
+                    torch.zeros((policy_batch_size, 1)),
+                ],
+                dim=0,
+            ).to(ptu.device)
 
         expert_obs = expert_batch["observations"]
         policy_obs = policy_batch["observations"]
@@ -188,7 +270,15 @@ class AdvIRL(TorchBaseAlgorithm):
             eps = ptu.rand(expert_obs.size(0), 1)
             eps.to(ptu.device)
 
-            interp_obs = eps * expert_disc_input + (1 - eps) * policy_disc_input
+            if self.absorbing:  # different batch size
+                batch_size = min(expert_disc_input.shape[0], policy_disc_input.shape[0])
+                interp_obs = (
+                    eps * expert_disc_input[:batch_size]
+                    + (1 - eps) * policy_disc_input[:batch_size]
+                )
+            else:
+                interp_obs = eps * expert_disc_input + (1 - eps) * policy_disc_input
+
             interp_obs = interp_obs.detach()
             interp_obs.requires_grad_(True)
 
@@ -254,6 +344,13 @@ class AdvIRL(TorchBaseAlgorithm):
                 agent_id,
                 True,
             )
+            if self.absorbing:
+                policy_batch_from_policy_buffer = self.wrap_for_absorbing_states(
+                    policy_batch_from_policy_buffer
+                )
+                policy_batch_from_expert_buffer = self.wrap_for_absorbing_states(
+                    policy_batch_from_expert_buffer, ignore_terminal=True
+                )
             policy_batch = {}
             for k in policy_batch_from_policy_buffer:
                 policy_batch[k] = torch.cat(
@@ -265,10 +362,14 @@ class AdvIRL(TorchBaseAlgorithm):
                 )
         else:
             policy_batch = self.get_batch(self.policy_optim_batch_size, agent_id, False)
+            if self.absorbing:
+                policy_batch = self.wrap_for_absorbing_states(policy_batch)
 
         obs = policy_batch["observations"]
         acts = policy_batch["actions"]
         next_obs = policy_batch["next_observations"]
+
+        # print(f"wrapped obs: {obs.shape}, next_obs: {next_obs.shape}")
 
         self.discriminator_n[policy_id].eval()
         if self.state_only:

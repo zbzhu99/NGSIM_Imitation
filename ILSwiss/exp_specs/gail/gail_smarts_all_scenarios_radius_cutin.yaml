@@ -29,8 +29,11 @@ constants:
   policy_num_hidden_layers: 3
 
   adv_irl_params:
-    mode: 'gail3'
+    mode: 'gail2'
     state_only: false
+
+    absorbing: true
+    zero_padding_absorbing: true
 
     best_key: "Test agent_0 Collision Rate all"
     best_criterion: "smallest"
@@ -53,7 +56,7 @@ constants:
     num_policy_updates_per_loop_iter: 1
 
     disc_lr: 0.0003
-    disc_focal_loss_gamma: 2.0
+    disc_focal_loss_gamma: 0.0
     disc_momentum: 0.9
     use_grad_pen: true
     disc_optim_batch_size: 256
