@@ -35,6 +35,9 @@ constants:
     best_key: "Test agent_0 Collision Rate all"
     best_criterion: "smallest"
 
+    absorbing: false
+    zero_padding_absorbing: true
+
     num_epochs: 100
     num_steps_per_epoch: 200000
     num_steps_between_train_calls: 1000

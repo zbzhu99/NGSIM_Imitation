@@ -32,6 +32,9 @@ constants:
     mode: 'gail'
     state_only: false
 
+    absorbing: false
+    zero_padding_absorbing: true
+
     best_key: "Test agent_0 Collision Rate all"
     best_criterion: "smallest"
 
