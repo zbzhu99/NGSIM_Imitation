@@ -29,10 +29,10 @@ constants:
   policy_num_hidden_layers: 3
 
   adv_irl_params:
-    mode: 'gail2'
+    mode: 'gail'
     state_only: false
 
-    absorbing: false
+    absorbing: true
     zero_padding_absorbing: true
 
     best_key: "Test agent_0 Collision Rate all"
@@ -71,7 +71,7 @@ constants:
     save_algorithm: false
 
   sac_params:
-    alpha: 1.0
+    alpha: 1
     discount: 0.99
     soft_target_tau: 0.005
     beta_1: 0.25

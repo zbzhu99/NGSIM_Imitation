@@ -123,7 +123,7 @@ class AdvIRL(TorchBaseAlgorithm):
                 (s,a,.,s') <-- (s,a,.,s*), where s* represents the absorbing state.
                 append another transition pair  (s*,.,.,s*) to buffer.
 
-        But here we do not append to recursive absorbing transition pair to the replay
+        But here we do not append recursive absorbing transition pair to the replay
         buffer, but to append it to the sampled batch to keep minimal code change.
         """
 
@@ -163,7 +163,7 @@ class AdvIRL(TorchBaseAlgorithm):
         )
         batch["actions"] = torch.cat([batch["actions"], append_act], dim=0)
         batch["rewards"] = torch.cat([batch["rewards"], append_r], dim=0)
-        # time infinity MDP
+        # time-infinite MDP
         batch["terminals"] = torch.zeros_like(batch["rewards"], dtype=torch.float32).to(
             device
         )

@@ -13,9 +13,9 @@ sys.path.insert(0, parentdir)
 print(sys.path)
 
 configs = {
-    "policy_input_path": "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/absorbing/ILSwiss/logs/gail1/no_absorbing/best.pkl",
+    "policy_input_path": "<path_to_model>",
     "polity_output_path": "./cpp_model/cpp_model.ckpt",
-    "stats_input_path": "/home/liuyuecheng/YuechengLiu-NGSIM-Imitation/absorbing/ILSwiss/demos/ngsim_i80_ngsim_us101/smarts_radius_stack-1_cutin.pkl",
+    "stats_input_path": "<path_to_stats_file>",
     "stats_output_path": "./cpp_model/stats.json",
 }
 

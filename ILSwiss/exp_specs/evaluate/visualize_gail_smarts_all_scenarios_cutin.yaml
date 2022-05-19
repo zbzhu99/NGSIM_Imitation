@@ -15,7 +15,9 @@ constants:
   traj_num: -1
   scale_env_with_demo_stats: true
 
-  log_path: "logs/<path_to_log_files>/"
+  #log_path: "logs/<path_to_log_files>/"
+  log_path: "logs/gail2-absorbing/init-padding-noindicator"
+
   save_trajectory: false
   trajectory_save_dir: "./trajectories/"
 
@@ -32,7 +34,7 @@ constants:
       feature_type: "radius"
       closest_neighbor_num: 8
       control_all_vehicles: False
-      collision_done: false
+      collision_done: true
       control_vehicle_num: 1
       envision: True
       envision_sim_name: "gail_i80"

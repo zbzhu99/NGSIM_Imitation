@@ -223,7 +223,7 @@ class InfoAdvIRL(AdvIRL):
         """
         policy_id = self.policy_mapping_dict[agent_id]
         batch = self.get_batch(self.posterior_optim_batch_size, agent_id, False)
-        batch = self.wrap_for_absorbing_states(batch)
+        # batch = self.wrap_for_absorbing_states(batch)
         # print(f"batch.keys: {batch.keys()}")
         self.posterior_trainer_n[policy_id].train_step(batch)
 
@@ -234,7 +234,7 @@ class InfoAdvIRL(AdvIRL):
                 (s,a,.,s') <-- (s,a,.,s*), where s* represents the absorbing state.
                 append another transition pair  (s*,.,.,s*) to buffer.
 
-        But here we do not append to recursive absorbing transition pair to the replay
+        But here we do not append recursive absorbing transition pair to the replay
         buffer, but to append it to the sampled batch to keep minimal code change.
         """
 
@@ -259,17 +259,30 @@ class InfoAdvIRL(AdvIRL):
             ).to(device)
             append_r = torch.zeros((terminal_num, 1), dtype=torch.float32).to(device)
             if "latents" in batch:
+                if terminal_num == 0:
+                    append_latent = torch.zeros((0, self.latent_distribution.dim)).to(
+                        device
+                    )
                 # random sample
-                append_latent = self.latent_distribution.sample_prior(
-                    batch_size=terminal_num
-                ).to(device)
+                else:
+                    append_latent = self.latent_distribution.sample_prior(
+                        batch_size=terminal_num
+                    ).to(device)
         else:
             # Keep original next_observations as "absorbing states",
             # i.e. (s,a,.,s') <-- (s,a,.,s')
             append_act = batch["actions"][terminal_index]
             append_r = batch["rewards"][terminal_index]
             if "latents" in batch:
-                append_latent = batch["latents"][terminal_index]
+                if terminal_num == 0:
+                    append_latent = torch.zeros((0, self.latent_distribution.dim)).to(
+                        device
+                    )
+                else:
+                    # random sample
+                    append_latent = self.latent_distribution.sample_prior(
+                        batch_size=terminal_num
+                    ).to(device)
 
         # "append_obs" is used for both "observations" and "next_observations"
         # to build (s*,.,.,s*) pairs.
@@ -281,7 +294,7 @@ class InfoAdvIRL(AdvIRL):
         )
         batch["actions"] = torch.cat([batch["actions"], append_act], dim=0)
         batch["rewards"] = torch.cat([batch["rewards"], append_r], dim=0)
-        # time infinity MDP
+        # time-infinite MDP
         batch["terminals"] = torch.zeros_like(batch["rewards"], dtype=torch.float32).to(
             device
         )

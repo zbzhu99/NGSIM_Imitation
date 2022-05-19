@@ -27,4 +27,4 @@ constants:
       cutin_dist_threshold: 15.0
       steps_before_cutin: 25
       steps_after_cutin: 25
-      divide_by_ttc: true
+      divide_by_ttc: false
