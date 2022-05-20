@@ -136,7 +136,7 @@ def experiment(variant):
 
     print("finished!")
     if variant["save_trajectory"]:
-        model_name = variant["policy_checkpoint"]
+        model_name = variant["policy_checkpoint"].replace("/", "-")
         save_dir = variant["trajectory_save_dir"]
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)

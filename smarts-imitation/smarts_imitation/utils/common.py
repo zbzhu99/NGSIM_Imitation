@@ -141,13 +141,14 @@ class CalObs:
 
     @staticmethod
     def cal_lane_errors(env_obs: Observation, **kwargs):
-        # look_ahead = kwargs["look_ahead"]
-        look_ahead = 3
+        lane_num = 3
         ego = env_obs.ego_vehicle_state
         waypoint_paths = env_obs.waypoint_paths
         wps = [path[0] for path in waypoint_paths]
-        closest_wp = min(wps, key=lambda wp: wp.dist_to(ego.position))
-        closest_wps = waypoint_paths[closest_wp.lane_index][:look_ahead]
+
+        # the nearest 3 lanes
+        sorted_wps = sorted(wps, key=lambda wp: wp.dist_to(ego.position))
+        closest_wps = sorted_wps[:lane_num]
 
         features = []
         for closest_wp in closest_wps:
@@ -171,7 +172,7 @@ class CalObs:
                 wp_dist,
             ]
             features.append(wp_error)
-        for _ in range(look_ahead - len(features)):
+        for _ in range(lane_num - len(features)):
             wp_error = [0, 0, 0, 0, -1]
             features.append(wp_error)
 
