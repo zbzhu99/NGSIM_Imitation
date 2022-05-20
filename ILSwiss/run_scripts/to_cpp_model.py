@@ -13,9 +13,11 @@ sys.path.insert(0, parentdir)
 print(sys.path)
 
 configs = {
-    "policy_input_path": "<path_to_model>",
+    # "policy_input_path": "<path_to_model>",
+    "policy_input_path": "logs/gail3/new-feature-no-absorbing/best.pkl",
     "polity_output_path": "./cpp_model/cpp_model.ckpt",
-    "stats_input_path": "<path_to_stats_file>",
+    # "stats_input_path": "<path_to_stats_file>",
+    "stats_input_path": "demos/ngsim_i80_ngsim_us101/smarts_radius_stack-1_cutin.pkl",
     "stats_output_path": "./cpp_model/stats.json",
 }
 

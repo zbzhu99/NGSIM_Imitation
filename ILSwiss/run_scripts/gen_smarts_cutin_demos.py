@@ -250,7 +250,7 @@ def sample_cutin_demos(
                 vehicle_info, traj = trajs_queue.get(block=True)
             else:
                 vehicle_info, traj = trajs_queue.get(block=True, timeout=600)
-            assert vehicle_info not in cutin_demo_trajs, f"vehicle_info: {vehicle_info}"
+            # assert vehicle_info not in cutin_demo_trajs, f"vehicle_info: {vehicle_info}"
             cutin_demo_trajs[vehicle_info] = traj
             all_vehicle_infos.append(vehicle_info)
 
@@ -262,142 +262,182 @@ def sample_cutin_demos(
             break
     print(f"Append to buffer finished! total {len(cutin_demo_trajs)} trajectories!")
 
+    save_all(
+        cutin_demo_trajs,
+        all_vehicle_infos,
+        test_ratio,
+        save_path,
+        feature_type,
+        obs_stack_size,
+    )
     if divide_by_ttc:
-        all_vehicle_infos.sort(key=lambda x: x.ttc)
-        half_num = int(len(all_vehicle_infos) / 2)
-
-        cutin_vehicles_1 = defaultdict(partial(defaultdict, list))
-        cutin_vehicles_2 = defaultdict(partial(defaultdict, list))
-
-        for vehicle_info in all_vehicle_infos[:half_num]:
-            cutin_vehicles_1[vehicle_info.scenario_name][
-                vehicle_info.traffic_name
-            ].append(vehicle_info)
-        for vehicle_info in all_vehicle_infos[half_num:]:
-            cutin_vehicles_2[vehicle_info.scenario_name][
-                vehicle_info.traffic_name
-            ].append(vehicle_info)
-
-        cutin_train_vehicles_1, cutin_test_vehicles_1 = split_train_test(
-            cutin_vehicles_1, test_ratio
-        )
-        cutin_train_vehicles_2, cutin_test_vehicles_2 = split_train_test(
-            cutin_vehicles_2, test_ratio
-        )
-        with open(save_path / "train_vehicles_cutin_ttc_divide_1.pkl", "wb") as f:
-            pickle.dump(cutin_train_vehicles_1, f)
-        with open(save_path / "test_vehicles_cutin_ttc_divide_1.pkl", "wb") as f:
-            pickle.dump(cutin_test_vehicles_1, f)
-        with open(save_path / "train_vehicles_cutin_ttc_divide_2.pkl", "wb") as f:
-            pickle.dump(cutin_train_vehicles_2, f)
-        with open(save_path / "test_vehicles_cutin_ttc_divide_2.pkl", "wb") as f:
-            pickle.dump(cutin_test_vehicles_2, f)
-
-        cutin_train_demo_trajs_1 = []
-        cutin_train_demo_trajs_2 = []
-        for scenario_name, traffics in cutin_train_vehicles_1.items():
-            for traffic_name, vehicles in traffics.items():
-                for vehicle in vehicles:
-                    cutin_train_demo_trajs_1.append(cutin_demo_trajs[vehicle])
-        file_save_path = Path(save_path).joinpath(
-            "smarts_{}_stack-{}_cutin_ttc_divide_1.pkl".format(
-                feature_type,
-                obs_stack_size,
-            )
-        )
-        with open(
-            file_save_path,
-            "wb",
-        ) as f:
-            pickle.dump(cutin_train_demo_trajs_1, f)
-        for scenario_name, traffics in cutin_train_vehicles_2.items():
-            for traffic_name, vehicles in traffics.items():
-                for vehicle in vehicles:
-                    cutin_train_demo_trajs_2.append(cutin_demo_trajs[vehicle])
-        file_save_path = Path(save_path).joinpath(
-            "smarts_{}_stack-{}_cutin_ttc_divide_2.pkl".format(
-                feature_type,
-                obs_stack_size,
-            )
-        )
-        with open(
-            file_save_path,
-            "wb",
-        ) as f:
-            pickle.dump(cutin_train_demo_trajs_2, f)
-
-    else:
-        cutin_vehicles = defaultdict(partial(defaultdict, list))
-        for vehicle_info in all_vehicle_infos:
-            cutin_vehicles[vehicle_info.scenario_name][
-                vehicle_info.traffic_name
-            ].append(vehicle_info)
-        cutin_train_vehicles, cutin_test_vehicles = split_train_test(
-            cutin_vehicles, test_ratio
+        save_divide_by_ttc(
+            cutin_demo_trajs,
+            all_vehicle_infos,
+            test_ratio,
+            save_path,
+            feature_type,
+            obs_stack_size,
         )
 
-        with open(save_path / "train_vehicles_cutin.pkl", "wb") as f:
-            pickle.dump(cutin_train_vehicles, f)
-        with open(save_path / "test_vehicles_cutin.pkl", "wb") as f:
-            pickle.dump(cutin_test_vehicles, f)
 
-        cutin_train_demo_trajs = []
-        for scenario_name, traffics in cutin_train_vehicles.items():
-            for traffic_name, vehicles in traffics.items():
-                for vehicle in vehicles:
-                    cutin_train_demo_trajs.append(cutin_demo_trajs[vehicle])
-        file_save_path = Path(save_path).joinpath(
-            "smarts_{}_stack-{}_cutin.pkl".format(
-                feature_type,
-                obs_stack_size,
-            )
+def save_divide_by_ttc(
+    cutin_demo_trajs,
+    all_vehicle_infos,
+    test_ratio,
+    save_path,
+    feature_type,
+    obs_stack_size,
+):
+    all_vehicle_infos.sort(key=lambda x: x.ttc)
+    half_num = int(len(all_vehicle_infos) / 2)
+
+    cutin_vehicles_1 = defaultdict(partial(defaultdict, list))
+    cutin_vehicles_2 = defaultdict(partial(defaultdict, list))
+
+    for vehicle_info in all_vehicle_infos[:half_num]:
+        cutin_vehicles_1[vehicle_info.scenario_name][vehicle_info.traffic_name].append(
+            vehicle_info
         )
-        with open(
-            file_save_path,
-            "wb",
-        ) as f:
-            pickle.dump(cutin_train_demo_trajs, f)
+    for vehicle_info in all_vehicle_infos[half_num:]:
+        cutin_vehicles_2[vehicle_info.scenario_name][vehicle_info.traffic_name].append(
+            vehicle_info
+        )
+
+    cutin_train_vehicles_1, cutin_test_vehicles_1 = split_train_test(
+        cutin_vehicles_1, test_ratio
+    )
+    cutin_train_vehicles_2, cutin_test_vehicles_2 = split_train_test(
+        cutin_vehicles_2, test_ratio
+    )
+    with open(save_path / "train_vehicles_cutin_ttc_divide_1.pkl", "wb") as f:
+        pickle.dump(cutin_train_vehicles_1, f)
+    with open(save_path / "test_vehicles_cutin_ttc_divide_1.pkl", "wb") as f:
+        pickle.dump(cutin_test_vehicles_1, f)
+    with open(save_path / "train_vehicles_cutin_ttc_divide_2.pkl", "wb") as f:
+        pickle.dump(cutin_train_vehicles_2, f)
+    with open(save_path / "test_vehicles_cutin_ttc_divide_2.pkl", "wb") as f:
+        pickle.dump(cutin_test_vehicles_2, f)
+
+    cutin_train_demo_trajs_1 = []
+    cutin_train_demo_trajs_2 = []
+    for scenario_name, traffics in cutin_train_vehicles_1.items():
+        for traffic_name, vehicles in traffics.items():
+            for vehicle in vehicles:
+                cutin_train_demo_trajs_1.append(cutin_demo_trajs[vehicle])
+    file_save_path = Path(save_path).joinpath(
+        "smarts_{}_stack-{}_cutin_ttc_divide_1.pkl".format(
+            feature_type,
+            obs_stack_size,
+        )
+    )
+    with open(
+        file_save_path,
+        "wb",
+    ) as f:
+        pickle.dump(cutin_train_demo_trajs_1, f)
+    for scenario_name, traffics in cutin_train_vehicles_2.items():
+        for traffic_name, vehicles in traffics.items():
+            for vehicle in vehicles:
+                cutin_train_demo_trajs_2.append(cutin_demo_trajs[vehicle])
+    file_save_path = Path(save_path).joinpath(
+        "smarts_{}_stack-{}_cutin_ttc_divide_2.pkl".format(
+            feature_type,
+            obs_stack_size,
+        )
+    )
+    with open(
+        file_save_path,
+        "wb",
+    ) as f:
+        pickle.dump(cutin_train_demo_trajs_2, f)
+    return
+
+
+def save_all(
+    cutin_demo_trajs,
+    all_vehicle_infos,
+    test_ratio,
+    save_path,
+    feature_type,
+    obs_stack_size,
+):
+    cutin_vehicles = defaultdict(partial(defaultdict, list))
+    for vehicle_info in all_vehicle_infos:
+        cutin_vehicles[vehicle_info.scenario_name][vehicle_info.traffic_name].append(
+            vehicle_info
+        )
+    cutin_train_vehicles, cutin_test_vehicles = split_train_test(
+        cutin_vehicles, test_ratio
+    )
+
+    with open(save_path / "train_vehicles_cutin.pkl", "wb") as f:
+        pickle.dump(cutin_train_vehicles, f)
+    with open(save_path / "test_vehicles_cutin.pkl", "wb") as f:
+        pickle.dump(cutin_test_vehicles, f)
+
+    cutin_train_demo_trajs = []
+    for scenario_name, traffics in cutin_train_vehicles.items():
+        for traffic_name, vehicles in traffics.items():
+            for vehicle in vehicles:
+                cutin_train_demo_trajs.append(cutin_demo_trajs[vehicle])
+    file_save_path = Path(save_path).joinpath(
+        "smarts_{}_stack-{}_cutin.pkl".format(
+            feature_type,
+            obs_stack_size,
+        )
+    )
+    with open(
+        file_save_path,
+        "wb",
+    ) as f:
+        pickle.dump(cutin_train_demo_trajs, f)
 
 
 def _get_lane_change_ttc(raw_observations):
     """Args:
     raw_observations: raw_observation of ego vehicle after lane change.
     """
-    ttc_padding = 1000
+    no_vehicle_ttc_padding = -1.0e9
 
     ego = raw_observations.ego_vehicle_state
     neighbor_vehicle_states = raw_observations.neighborhood_vehicle_states
 
-    nearst_v = None
-    nearst_distance = np.inf
+    nearest_v = None
+    nearest_distance = np.inf
     for v in neighbor_vehicle_states:
         if v.lane_index != ego.lane_index:
             continue
         dist = np.linalg.norm(v.position[:2] - ego.position[:2], 2)
-        if dist < nearst_distance:
-            nearst_distance = dist
-            nearst_v = v
+        if dist < nearest_distance:
+            nearest_distance = dist
+            nearest_v = v
 
-    if nearst_v is None:
-        return ttc_padding
+    if nearest_v is None:
+        return no_vehicle_ttc_padding, no_vehicle_ttc_padding
 
     ego_rel_pos_to_v = np.array(
-        [ego.position[0] - nearst_v.position[0], ego.position[1] - nearst_v.position[1]]
+        [
+            ego.position[0] - nearest_v.position[0],
+            ego.position[1] - nearest_v.position[1],
+        ]
     )
     ego_abs_radians_to_v = vec_to_radians(ego_rel_pos_to_v)
-    ego_rel_radians_to_v = _legalize_angle(ego_abs_radians_to_v - nearst_v.heading)
-    distance_project = nearst_distance * math.cos(ego_rel_radians_to_v)
+    ego_rel_radians_to_v = _legalize_angle(ego_abs_radians_to_v - nearest_v.heading)
+    distance_project = nearest_distance * math.cos(ego_rel_radians_to_v)
 
-    heading_rel_angle = _legalize_angle(nearst_v.heading - ego.heading)
+    heading_rel_angle = _legalize_angle(nearest_v.heading - ego.heading)
     ego_speed_project = ego.speed * math.cos(heading_rel_angle)
-    speed_delta = nearst_v.speed - ego_speed_project
-    if np.abs(speed_delta) < 0.01:
-        ttc = ttc_padding
+    speed_delta = nearest_v.speed - ego_speed_project
+
+    if speed_delta >= 0:
+        speed_delta = max(speed_delta, 1.0e-6)
     else:
-        ttc = distance_project / speed_delta
-        if ttc < 0:
-            ttc = ttc_padding
-    return ttc
+        speed_delta = min(speed_delta, -1.0e-6)
+
+    ttc = distance_project / speed_delta
+
+    return ttc, speed_delta
 
 
 def _is_lane_change_valid(raw_observations, angle_threshold, cutin_dist_threshold):
@@ -468,7 +508,9 @@ def get_single_cutin_demo(
 
     ttc = np.inf
     for i in lane_change_steps:
-        ttc_i = _get_lane_change_ttc(original_path[i]["raw_next_observations"])
+        ttc_i, speed_delta_i = _get_lane_change_ttc(
+            original_path[i]["raw_next_observations"]
+        )
         ttc = min(ttc_i, ttc)
 
     start_time = np.inf

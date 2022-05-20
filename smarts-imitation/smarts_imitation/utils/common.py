@@ -154,15 +154,20 @@ class CalObs:
         for closest_wp in closest_wps:
             lane_rel_heading_radians = _legalize_angle(closest_wp.heading - ego.heading)
             lane_rel_heading_vec = radians_to_vec(lane_rel_heading_radians)
+
             wp_rel_pos = [
                 closest_wp.pos[0] - ego.position[0],
                 closest_wp.pos[1] - ego.position[1],
             ]
-            wp_rel_heading_radians = vec_to_radians(wp_rel_pos)
-            wp_rel_heading_vec = radians_to_vec(
-                _legalize_angle(wp_rel_heading_radians - ego.heading)
-            )
             wp_dist = np.linalg.norm(wp_rel_pos)
+
+            if wp_rel_pos[0] == 0 and wp_rel_pos[1] == 0:
+                wp_rel_heading_vec = [0, 0]
+            else:
+                wp_rel_heading_radians = vec_to_radians(wp_rel_pos)
+                wp_rel_heading_vec = radians_to_vec(
+                    _legalize_angle(wp_rel_heading_radians - ego.heading)
+                )
 
             wp_error = [
                 lane_rel_heading_vec[0],
@@ -172,6 +177,7 @@ class CalObs:
                 wp_dist,
             ]
             features.append(wp_error)
+
         for _ in range(lane_num - len(features)):
             wp_error = [0, 0, 0, 0, -1]
             features.append(wp_error)

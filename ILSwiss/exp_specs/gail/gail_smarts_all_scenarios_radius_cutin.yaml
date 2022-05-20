@@ -32,7 +32,7 @@ constants:
     mode: 'gail3'
     state_only: false
 
-    absorbing: false
+    absorbing: true
     zero_padding_absorbing: true
 
     best_key: "Test agent_0 Collision Rate all"
