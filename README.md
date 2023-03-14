@@ -34,7 +34,7 @@ pip install -r requirements.txt
    pip install -e .[camera-obs]
    ```
 
-4. Download the NGSIM dataset from: https://drive.google.com/file/d/1n0kvbS1psscTgYgQvTB6NZNTvZ4hSbzU/view?usp=sharing, and place it under `smarts-imitation/`
+4. Download the NGSIM dataset from: https://drive.google.com/file/d/1SILBfK2Z1LiTJ9cc4qGErq547Ax5nX8M/view?usp=share_link, and place it under `smarts-imitation/`
 
 5. Install the ngsim wrapper for smarts with
 
@@ -60,7 +60,19 @@ pip install -r requirements.txt
 
 ### Setup PPUU
 
-8. Download data file for the PPUU simulator from: https://drive.google.com/file/d/1oMzxTWK-wzpFufi2SryyD2Pa_l1tTEW0/view?usp=sharing, and place it under `pytorch-PPUU/`
+8. Make sure you have downloaded the NGSIM dataset and placed it under `smarts-imitation`. Create a link to the dataset under PPUU folder:
+
+   ```bash
+   mkdir pytorch-PPUU/traffic-data
+   ln -s $(pwd)/smarts-imitation/xy-trajectories pytorch-PPUU/traffic-data/
+   ```
+
+   Process the traffic data to dump the "state, action, cost" triple:
+
+   ```bash
+   cd pytorch-PPUU
+   for t in 0 1 2; do python generate_trajectories.py -map i80 -time_slot $t; done
+   ```
 
 9. Generate structured expert demonstrations with
 
